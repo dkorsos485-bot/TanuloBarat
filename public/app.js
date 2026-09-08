@@ -1,102 +1,53 @@
+/* ============================================================
+   TANULÓBARÁT - TELJES APP.JS
+   A jelenlegi public/index.html-hez igazítva.
+   ============================================================ */
+
 "use strict";
 
 /* ============================================================
-   TANULÓBARÁT - APP.JS
+   ÁLLAPOT
    ============================================================ */
 
 const state = {
     user: null,
     friends: [],
     requests: [],
-    searchUsers: [],
-    currentFriend: null,
-    messages: [],
     materials: [],
     grades: [],
-    stats: null
+
+    currentFriend: null,
+    currentMessages: [],
+    currentPage: "home",
+
+    ratingTargetId: null,
+    ratingValue: 0,
+
+    gradeTargetId: null,
+    gradeValue: 0,
+
+    generatedAI: null,
+    aiType: "material",
+
+    searchUsers: []
 };
 
-const $ = id => document.getElementById(id);
+let friendSearchTimer = null;
 
-/* ============================================================
-   API
-   ============================================================ */
-
-async function api(url, options = {}) {
-    const config = {
-        credentials: "include",
-        headers: {
-            "Content-Type": "application/json",
-            ...(options.headers || {})
-        },
-        ...options
-    };
-
-    const response = await fetch(url, config);
-
-    let data = {};
-
-    try {
-        data = await response.json();
-    } catch (_) {
-        data = {};
-    }
-
-    if (!response.ok) {
-        throw new Error(data.error || `Hiba történt (${response.status}).`);
-    }
-
-    return data;
-}
 
 /* ============================================================
    SEGÉDFÜGGVÉNYEK
    ============================================================ */
 
+const $ = id => document.getElementById(id);
+
 function escapeHTML(value) {
     return String(value ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
-
-function showToast(message, type = "info") {
-    let container = $("toastContainer");
-
-    if (!container) {
-        container = document.createElement("div");
-        container.id = "toastContainer";
-        container.className = "toast-container";
-        document.body.appendChild(container);
-    }
-
-    const toast = document.createElement("div");
-    toast.className = `toast toast-${type}`;
-    toast.textContent = message;
-
-    container.appendChild(toast);
-
-    setTimeout(() => {
-        toast.classList.add("hide");
-
-        setTimeout(() => {
-            toast.remove();
-        }, 300);
-    }, 3000);
-}
-
-function showProfileMessage(message, type = "error") {
-    const box = $("profileMessage");
-
-    if (!box) {
-        showToast(message, type);
-        return;
-    }
-
-    box.textContent = message;
-    box.className = `profile-message ${type}`;
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
 }
 
 function formatDate(date) {
@@ -105,7 +56,7 @@ function formatDate(date) {
     const d = new Date(date);
 
     if (Number.isNaN(d.getTime())) {
-        return date;
+        return "";
     }
 
     return d.toLocaleString("hu-HU", {
@@ -117,15 +68,158 @@ function formatDate(date) {
     });
 }
 
-function getInitial(name) {
-    return String(name || "?")
-        .trim()
-        .charAt(0)
-        .toUpperCase();
-}
 
 /* ============================================================
-   NÉZETEK
+   API
+   ============================================================ */
+
+async function api(url, options = {}) {
+    const config = {
+        method: options.method || "GET",
+        credentials: "include",
+        ...options
+    };
+
+    /*
+       JSON body esetén Content-Type.
+       FormData esetén NEM állítjuk be kézzel.
+    */
+
+    const headers = {
+        ...(options.headers || {})
+    };
+
+    if (
+        options.body &&
+        !(options.body instanceof FormData) &&
+        !headers["Content-Type"]
+    ) {
+        headers["Content-Type"] = "application/json";
+    }
+
+    config.headers = headers;
+
+    let response;
+
+    try {
+        response = await fetch(url, config);
+    } catch (error) {
+        throw new Error(
+            "Nem sikerült kapcsolódni a szerverhez."
+        );
+    }
+
+    let data = {};
+
+    try {
+        data = await response.json();
+    } catch (_) {
+        data = {};
+    }
+
+    if (!response.ok) {
+        throw new Error(
+            data.error ||
+            data.message ||
+            `Szerverhiba (${response.status})`
+        );
+    }
+
+    return data;
+}
+
+
+/* ============================================================
+   ÉRTESÍTÉS
+   ============================================================ */
+
+function showToast(message, type = "info") {
+    const container =
+        $("toastContainer") ||
+        document.body;
+
+    const toast =
+        document.createElement("div");
+
+    toast.className =
+        `toast toast-${type}`;
+
+    toast.textContent =
+        String(message || "");
+
+    container.appendChild(toast);
+
+    requestAnimationFrame(() => {
+        toast.classList.add("show");
+    });
+
+    setTimeout(() => {
+        toast.classList.add("hide");
+
+        setTimeout(() => {
+            toast.remove();
+        }, 300);
+    }, 3000);
+}
+
+
+/* ============================================================
+   BETÖLTÉS
+   ============================================================ */
+
+function setLoading(show, text = "Betöltés...") {
+    const loading = $("globalLoading");
+
+    if (!loading) {
+        return;
+    }
+
+    if ($("loadingText")) {
+        $("loadingText").textContent = text;
+    }
+
+    loading.classList.toggle(
+        "hidden",
+        !show
+    );
+}
+
+
+/* ============================================================
+   MODALOK
+   ============================================================ */
+
+function openModal(id) {
+    const modal = $(id);
+
+    if (!modal) {
+        console.warn(
+            "Nem található modal:",
+            id
+        );
+        return;
+    }
+
+    modal.classList.remove("hidden");
+    modal.classList.add("active");
+    modal.style.display = "flex";
+}
+
+function closeModal(id) {
+    const modal = $(id);
+
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.remove("active");
+    modal.classList.add("hidden");
+    modal.style.display = "none";
+}
+
+
+/* ============================================================
+   BEJELENTKEZÉS / APP MEGJELENÍTÉSE
    ============================================================ */
 
 function showAuth() {
@@ -154,181 +248,330 @@ function showApp() {
 
     if (app) {
         app.classList.remove("hidden");
-        app.style.display = "";
+        app.style.display = "block";
     }
 
-    navigate("homePage");
+    updateUserUI();
+    navigate("home");
+    ensureProfileEditButton();
 }
 
-function navigate(pageId) {
-    document.querySelectorAll(".page").forEach(page => {
-        page.classList.add("hidden");
-        page.style.display = "none";
-    });
-
-    const page = $(pageId);
-
-    if (!page) return;
-
-    page.classList.remove("hidden");
-    page.style.display = "";
-
-    document.querySelectorAll("[data-page]").forEach(button => {
-        button.classList.toggle(
-            "active",
-            button.dataset.page === pageId
-        );
-    });
-
-    if (pageId === "friendsPage") {
-        loadFriends();
-        loadRequests();
-    }
-
-    if (pageId === "gradesPage") {
-        loadGrades();
-    }
-
-    if (pageId === "homePage") {
-        loadStats();
-    }
-
-    if (pageId === "learningPage") {
-        loadMaterials();
-    }
-}
 
 /* ============================================================
-   FELHASZNÁLÓ UI
+   OLDALVÁLTÁS
+   ============================================================ */
+
+function navigate(page) {
+    const pages = [
+        "home",
+        "learning",
+        "grades",
+        "friends",
+        "profile"
+    ];
+
+    if (!pages.includes(page)) {
+        page = "home";
+    }
+
+    state.currentPage = page;
+
+    document
+        .querySelectorAll(".page")
+        .forEach(section => {
+            const active =
+                section.id === `page-${page}`;
+
+            section.classList.toggle(
+                "active",
+                active
+            );
+
+            section.classList.toggle(
+                "hidden",
+                !active
+            );
+
+            section.style.display =
+                active ? "" : "none";
+        });
+
+    document
+        .querySelectorAll("[data-page]")
+        .forEach(button => {
+            button.classList.toggle(
+                "active",
+                button.dataset.page === page
+            );
+        });
+
+    $("sidebar")?.classList.remove("open");
+
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
+}
+
+
+/* ============================================================
+   FELHASZNÁLÓI FELÜLET
    ============================================================ */
 
 function updateUserUI() {
-    if (!state.user) return;
+    if (!state.user) {
+        return;
+    }
 
-    const user = state.user;
+    const name =
+        state.user.name ||
+        state.user.username ||
+        "Tanuló";
 
-    document.querySelectorAll("[data-user-name]").forEach(element => {
-        element.textContent = user.name || user.username || "";
-    });
+    const username =
+        state.user.username ||
+        "";
 
-    document.querySelectorAll("[data-user-username]").forEach(element => {
-        element.textContent = user.username || "";
-    });
+    const grade =
+        state.user.grade
+            ? `${state.user.grade}. osztály`
+            : "";
 
-    document.querySelectorAll("[data-user-grade]").forEach(element => {
-        element.textContent = user.grade ? `${user.grade}. évfolyam` : "";
-    });
+    const initial =
+        name.charAt(0).toUpperCase();
 
-    const avatarElements = document.querySelectorAll(
-        "[data-user-avatar]"
-    );
-
-    avatarElements.forEach(element => {
-        if (user.avatar) {
-            element.innerHTML = `
-                <img
-                    src="${escapeHTML(user.avatar)}"
-                    alt="Profilkép"
-                >
-            `;
-        } else {
-            element.textContent = getInitial(user.name);
+    [
+        "homeName",
+        "profileName",
+        "userName",
+        "welcomeName",
+        "topUserName",
+        "sidebarUserName"
+    ].forEach(id => {
+        if ($(id)) {
+            $(id).textContent = name;
         }
     });
+
+    if ($("profileUsername")) {
+        $("profileUsername").textContent =
+            `@${username}`;
+    }
+
+    if ($("profileEmail")) {
+        $("profileEmail").textContent =
+            state.user.email || "-";
+    }
+
+    if ($("profileGrade")) {
+        $("profileGrade").textContent =
+            grade || "-";
+    }
+
+    if ($("topUserGrade")) {
+        $("topUserGrade").textContent =
+            grade;
+    }
+
+    if ($("sidebarUserUsername")) {
+        $("sidebarUserUsername").textContent =
+            `@${username}`;
+    }
+
+    /*
+       Ha van valódi profilkép, megpróbáljuk képként
+       megjeleníteni. Ha nincs, kezdőbetű marad.
+    */
+
+    [
+        "profileAvatar",
+        "userAvatar",
+        "sidebarAvatar"
+    ].forEach(id => {
+        const el = $(id);
+
+        if (!el) {
+            return;
+        }
+
+        if (
+            state.user.avatar &&
+            state.user.avatar.startsWith("data:image/")
+        ) {
+            if (el.tagName === "IMG") {
+                el.src = state.user.avatar;
+            } else {
+                el.innerHTML =
+                    `<img src="${escapeHTML(state.user.avatar)}"
+                    alt="Profilkép"
+                    style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+            }
+        } else {
+            el.textContent = initial;
+        }
+    });
+
+    if ($("profileJoined")) {
+        $("profileJoined").textContent =
+            state.user.createdAt
+                ? formatDate(state.user.createdAt).split(",")[0]
+                : "-";
+    }
+
+    if ($("currentDate")) {
+        $("currentDate").textContent =
+            new Date().toLocaleDateString(
+                "hu-HU",
+                {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric"
+                }
+            );
+    }
 }
 
+
 /* ============================================================
-   SESSION
+   BEJELENTKEZÉS ELLENŐRZÉSE
    ============================================================ */
 
-async function checkSession() {
+async function checkLogin() {
     try {
-        const data = await api("/api/me");
+        const data =
+            await api("/api/me");
 
-        if (data.user) {
+        if (data && data.user) {
             state.user = data.user;
-            updateUserUI();
+
             showApp();
 
-            await Promise.all([
-                loadFriends(),
-                loadRequests(),
-                loadStats()
-            ]);
+            await loadAll();
         } else {
+            state.user = null;
             showAuth();
         }
-    } catch (_) {
+    } catch (error) {
+        state.user = null;
         showAuth();
     }
 }
 
+
 /* ============================================================
-   LOGIN
+   BEJELENTKEZÉS
    ============================================================ */
 
 async function login() {
-    const username = $("loginUsername")?.value.trim();
-    const password = $("loginPassword")?.value || "";
+    const username =
+        $("loginUsername")?.value.trim();
+
+    const password =
+        $("loginPassword")?.value || "";
 
     if (!username || !password) {
-        showToast("Töltsd ki a felhasználónevet és a jelszót!", "error");
+        showToast(
+            "Add meg a felhasználónevet és a jelszót!",
+            "error"
+        );
         return;
     }
 
-    const button = $("loginButton");
+    const button =
+        $("loginButton");
 
     if (button) {
         button.disabled = true;
-        button.textContent = "⏳ Belépés...";
+        button.textContent =
+            "⏳ Belépés...";
     }
 
     try {
-        const data = await api("/api/login", {
-            method: "POST",
-            body: JSON.stringify({
-                username,
-                password
-            })
-        });
+        const data =
+            await api(
+                "/api/login",
+                {
+                    method: "POST",
+                    body: JSON.stringify({
+                        username,
+                        password
+                    })
+                }
+            );
+
+        if (!data.user) {
+            throw new Error(
+                "A szerver nem adott vissza felhasználót."
+            );
+        }
 
         state.user = data.user;
 
-        updateUserUI();
         showApp();
 
-        await Promise.all([
-            loadFriends(),
-            loadRequests(),
-            loadStats()
-        ]);
+        await loadAll();
 
-        showToast("Sikeres bejelentkezés! 👋", "success");
+        showToast(
+            "Sikeres bejelentkezés! 👋",
+            "success"
+        );
 
     } catch (error) {
-        showToast(error.message, "error");
+        console.error(
+            "Bejelentkezési hiba:",
+            error
+        );
+
+        showToast(
+            error.message ||
+            "Sikertelen bejelentkezés.",
+            "error"
+        );
 
     } finally {
         if (button) {
             button.disabled = false;
-            button.textContent = "Belépés";
+            button.textContent =
+                "Belépés";
         }
     }
 }
+
 
 /* ============================================================
    REGISZTRÁCIÓ
    ============================================================ */
 
 async function register() {
-    const name = $("registerName")?.value.trim();
-    const username = $("registerUsername")?.value.trim();
-    const email = $("registerEmail")?.value.trim();
-    const password = $("registerPassword")?.value || "";
-    const grade = Number($("registerGrade")?.value);
+    const name =
+        $("registerName")?.value.trim();
 
-    if (!name || !username || !email || !password || !grade) {
-        showToast("Tölts ki minden mezőt!", "error");
+    const username =
+        $("registerUsername")?.value.trim();
+
+    const email =
+        $("registerEmail")?.value.trim();
+
+    const password =
+        $("registerPassword")?.value || "";
+
+    const grade =
+        Number(
+            $("registerGrade")?.value
+        );
+
+    if (
+        !name ||
+        !username ||
+        !email ||
+        !password ||
+        !grade
+    ) {
+        showToast(
+            "Tölts ki minden mezőt!",
+            "error"
+        );
         return;
     }
 
@@ -342,35 +585,48 @@ async function register() {
 
     if (password.length < 6) {
         showToast(
-            "A jelszónak legalább 6 karakteresnek kell lennie.",
+            "A jelszó legalább 6 karakter legyen.",
             "error"
         );
         return;
     }
 
-    const button = $("registerButton");
+    const button =
+        $("registerButton");
 
     if (button) {
         button.disabled = true;
-        button.textContent = "⏳ Regisztráció...";
+        button.textContent =
+            "⏳ Regisztráció...";
     }
 
     try {
-        const data = await api("/api/register", {
-            method: "POST",
-            body: JSON.stringify({
-                name,
-                username,
-                email,
-                password,
-                grade
-            })
-        });
+        const data =
+            await api(
+                "/api/register",
+                {
+                    method: "POST",
+                    body: JSON.stringify({
+                        name,
+                        username,
+                        email,
+                        password,
+                        grade
+                    })
+                }
+            );
+
+        if (!data.user) {
+            throw new Error(
+                "A regisztráció nem sikerült."
+            );
+        }
 
         state.user = data.user;
 
-        updateUserUI();
         showApp();
+
+        await loadAll();
 
         showToast(
             "Sikeres regisztráció! 🎉",
@@ -378,15 +634,26 @@ async function register() {
         );
 
     } catch (error) {
-        showToast(error.message, "error");
+        console.error(
+            "Regisztrációs hiba:",
+            error
+        );
+
+        showToast(
+            error.message ||
+            "Sikertelen regisztráció.",
+            "error"
+        );
 
     } finally {
         if (button) {
             button.disabled = false;
-            button.textContent = "Regisztráció";
+            button.textContent =
+                "Regisztráció";
         }
     }
 }
+
 
 /* ============================================================
    KIJELENTKEZÉS
@@ -394,28 +661,36 @@ async function register() {
 
 async function logout() {
     try {
-        await api("/api/logout", {
-            method: "POST",
-            body: JSON.stringify({})
-        });
-    } catch (_) {
-        // Ha a szerver már kijelentkeztetett, akkor is folytatjuk.
+        await api(
+            "/api/logout",
+            {
+                method: "POST"
+            }
+        );
+    } catch (error) {
+        console.warn(
+            "Kijelentkezési API hiba:",
+            error
+        );
     }
 
     state.user = null;
     state.friends = [];
     state.requests = [];
-    state.searchUsers = [];
+    state.materials = [];
+    state.grades = [];
     state.currentFriend = null;
-    state.messages = [];
+    state.currentMessages = [];
+    state.searchUsers = [];
 
     showAuth();
 
     showToast(
-        "Sikeresen kijelentkeztél.",
-        "success"
+        "Kijelentkeztél.",
+        "info"
     );
 }
+
 
 /* ============================================================
    BARÁTOK BETÖLTÉSE
@@ -423,263 +698,143 @@ async function logout() {
 
 async function loadFriends() {
     try {
-        const data = await api("/api/friends");
+        const data =
+            await api("/api/friends");
 
-        state.friends = data.friends || [];
+        state.friends =
+            Array.isArray(data.friends)
+                ? data.friends
+                : [];
 
         renderFriends();
-        renderChatFriends();
-
-    } catch (error) {
-        console.error("Barátok betöltése:", error);
-    }
-}
-
-function renderFriends() {
-    const box = $("friendsList");
-
-    if (!box) return;
-
-    if (!state.friends.length) {
-        box.innerHTML = `
-            <div class="empty-inline">
-                Még nincs barátod.
-            </div>
-        `;
-        return;
-    }
-
-    box.innerHTML = state.friends.map(friend => `
-        <div class="friend-card">
-            <div class="friend-avatar">
-                ${
-                    friend.avatar
-                        ? `<img src="${escapeHTML(friend.avatar)}" alt="Profilkép">`
-                        : escapeHTML(getInitial(friend.name))
-                }
-            </div>
-
-            <div class="friend-info">
-                <strong>${escapeHTML(friend.name)}</strong>
-                <span>@${escapeHTML(friend.username)}</span>
-                ${
-                    friend.grade
-                        ? `<small>${escapeHTML(friend.grade)}. évfolyam</small>`
-                        : ""
-                }
-            </div>
-
-            <div class="friend-actions">
-                <button
-                    type="button"
-                    class="primary-button"
-                    data-chat-friend="${friend.id}"
-                >
-                    💬 Chat
-                </button>
-            </div>
-        </div>
-    `).join("");
-}
-
-function renderChatFriends() {
-    const box = $("chatFriendsList");
-
-    if (!box) return;
-
-    if (!state.friends.length) {
-        box.innerHTML = `
-            <div class="empty-inline">
-                Nincsenek barátaid.
-            </div>
-        `;
-        return;
-    }
-
-    box.innerHTML = state.friends.map(friend => `
-        <button
-            type="button"
-            class="chat-friend"
-            data-chat-friend="${friend.id}"
-        >
-            <span class="friend-avatar">
-                ${
-                    friend.avatar
-                        ? `<img src="${escapeHTML(friend.avatar)}" alt="">`
-                        : escapeHTML(getInitial(friend.name))
-                }
-            </span>
-
-            <span>
-                <strong>${escapeHTML(friend.name)}</strong>
-                <small>@${escapeHTML(friend.username)}</small>
-            </span>
-        </button>
-    `).join("");
-}
-
-/* ============================================================
-   ⭐ ITT KEZDŐDIK A JAVÍTOTT BARÁTKERESÉS
-   ============================================================ */
-
-let friendSearchTimer = null;
-
-async function searchUsers() {
-    const input = $("userSearch");
-    const box = $("searchResults");
-
-    if (!input || !box) {
-        console.error(
-            "A userSearch vagy searchResults elem nem található."
-        );
-        return;
-    }
-
-    const query = input.value.trim();
-
-    clearTimeout(friendSearchTimer);
-
-    if (!query) {
-        box.innerHTML = `
-            <div class="empty-inline">
-                Írj be egy nevet vagy felhasználónevet.
-            </div>
-        `;
-
-        state.searchUsers = [];
-        return;
-    }
-
-    box.innerHTML = `
-        <div class="empty-inline">
-            🔎 Keresés...
-        </div>
-    `;
-
-    try {
-        const data = await api(
-            `/api/users?q=${encodeURIComponent(query)}`
-        );
-
-        state.searchUsers = Array.isArray(data.users)
-            ? data.users
-            : [];
-
+        renderSendFriendList();
         renderSearchResults();
 
-    } catch (error) {
-        console.error("Barátkeresési hiba:", error);
+        if ($("friendCount")) {
+            $("friendCount").textContent =
+                state.friends.length;
+        }
 
-        box.innerHTML = `
-            <div class="empty-inline error">
-                ❌ ${escapeHTML(error.message)}
-            </div>
-        `;
+        if ($("friendListCount")) {
+            $("friendListCount").textContent =
+                state.friends.length;
+        }
+
+        if ($("profileFriendCount")) {
+            $("profileFriendCount").textContent =
+                state.friends.length;
+        }
+
+    } catch (error) {
+        console.error(
+            "Barátok betöltési hiba:",
+            error
+        );
     }
 }
 
-function renderSearchResults() {
-    const box = $("searchResults");
 
-    if (!box) return;
+function renderFriends() {
+    const box =
+        $("friendsList");
 
-    if (!state.searchUsers.length) {
+    if (!box) {
+        return;
+    }
+
+    if (!state.friends.length) {
         box.innerHTML = `
-            <div class="empty-inline">
-                🔍 Nem található ilyen felhasználó.
+            <div class="empty-state compact-empty">
+                <div class="empty-icon">👥</div>
+                <h3>Még nincsenek barátaid</h3>
+                <p>
+                    Keress rá valakire, és küldj neki
+                    baráti kérést.
+                </p>
             </div>
         `;
         return;
     }
 
-    box.innerHTML = state.searchUsers.map(user => `
-        <div class="search-user-card">
+    box.innerHTML =
+        state.friends.map(friend => {
+            const initial =
+                (
+                    friend.name ||
+                    friend.username ||
+                    "?"
+                )
+                .charAt(0)
+                .toUpperCase();
 
-            <div class="friend-avatar">
-                ${
-                    user.avatar
-                        ? `
-                            <img
-                                src="${escapeHTML(user.avatar)}"
-                                alt="Profilkép"
-                            >
-                        `
-                        : escapeHTML(
-                            getInitial(user.name)
-                        )
-                }
-            </div>
+            return `
+                <div class="friend-card">
 
-            <div class="friend-info">
-                <strong>
-                    ${escapeHTML(user.name)}
-                </strong>
+                    <div class="friend-avatar">
+                        ${escapeHTML(initial)}
+                    </div>
 
-                <span>
-                    @${escapeHTML(user.username)}
-                </span>
+                    <div class="friend-info">
+                        <strong>
+                            ${escapeHTML(friend.name || "")}
+                        </strong>
 
-                ${
-                    user.grade
-                        ? `
-                            <small>
-                                ${escapeHTML(user.grade)}. évfolyam
-                            </small>
-                        `
-                        : ""
-                }
-            </div>
+                        <span>
+                            @${escapeHTML(friend.username || "")}
+                        </span>
+                    </div>
 
-            <button
-                type="button"
-                class="primary-button"
-                data-add-friend="${user.id}"
-            >
-                ➕ Barátnak jelölés
-            </button>
+                    <div class="friend-actions">
 
-        </div>
-    `).join("");
+                        <button
+                            type="button"
+                            class="secondary-button"
+                            data-chat-id="${Number(friend.id)}">
+                            💬 Chat
+                        </button>
+
+                        <button
+                            type="button"
+                            class="secondary-button"
+                            data-rate-id="${Number(friend.id)}">
+                            ⭐ Értékelés
+                        </button>
+
+                        <button
+                            type="button"
+                            class="secondary-button"
+                            data-grade-id="${Number(friend.id)}">
+                            📊 Jegy
+                        </button>
+
+                    </div>
+
+                </div>
+            `;
+        }).join("");
 }
 
-async function sendFriendRequest(userId) {
-    if (!userId) return;
-
-    try {
-        await api("/api/friends/request", {
-            method: "POST",
-            body: JSON.stringify({
-                userId: Number(userId)
-            })
-        });
-
-        showToast(
-            "Barátkérelem elküldve! 👥",
-            "success"
-        );
-
-        await searchUsers();
-
-    } catch (error) {
-        showToast(error.message, "error");
-    }
-}
 
 /* ============================================================
-   BEÉRKEZŐ BARÁTKÉRELMEK
+   BARÁTI KÉRÉSEK
    ============================================================ */
 
 async function loadRequests() {
     try {
-        const data = await api(
-            "/api/friends/requests"
-        );
+        const data =
+            await api(
+                "/api/friends/requests"
+            );
 
-        state.requests = data.requests || [];
+        state.requests =
+            Array.isArray(data.requests)
+                ? data.requests
+                : [];
 
         renderRequests();
 
-        const badge = $("friendRequestBadge");
+        const badge =
+            $("friendRequestBadge");
 
         if (badge) {
             badge.textContent =
@@ -693,73 +848,80 @@ async function loadRequests() {
 
     } catch (error) {
         console.error(
-            "Barátkérelmek betöltése:",
+            "Kérések betöltési hiba:",
             error
         );
     }
 }
 
+
 function renderRequests() {
-    const box = $("friendRequests");
+    const box =
+        $("friendRequests");
 
-    if (!box) return;
-
-    if (!state.requests.length) {
-        box.innerHTML = `
-            <div class="empty-inline">
-                Nincs új baráti kérés.
-            </div>
-        `;
+    if (!box) {
         return;
     }
 
-    box.innerHTML = state.requests.map(request => `
-        <div class="request-card">
+    if (!state.requests.length) {
+        box.innerHTML =
+            `<div class="empty-inline">
+                Nincs új baráti kérés.
+            </div>`;
+        return;
+    }
 
-            <div class="friend-avatar">
-                ${escapeHTML(
-                    getInitial(request.name)
-                )}
+    box.innerHTML =
+        state.requests.map(request => `
+            <div class="request-card">
+
+                <div class="friend-avatar">
+                    ${escapeHTML(
+                        (
+                            request.name || "?"
+                        )
+                        .charAt(0)
+                        .toUpperCase()
+                    )}
+                </div>
+
+                <div class="friend-info">
+                    <strong>
+                        ${escapeHTML(request.name || "")}
+                    </strong>
+
+                    <span>
+                        @${escapeHTML(request.username || "")}
+                    </span>
+                </div>
+
+                <div class="friend-actions">
+
+                    <button
+                        type="button"
+                        class="primary-button"
+                        data-accept-id="${Number(request.id)}">
+                        ✓ Elfogad
+                    </button>
+
+                    <button
+                        type="button"
+                        class="secondary-button"
+                        data-reject-id="${Number(request.id)}">
+                        ✕ Elutasít
+                    </button>
+
+                </div>
+
             </div>
-
-            <div class="friend-info">
-                <strong>
-                    ${escapeHTML(request.name)}
-                </strong>
-
-                <span>
-                    @${escapeHTML(request.username)}
-                </span>
-            </div>
-
-            <div class="friend-actions">
-
-                <button
-                    type="button"
-                    class="primary-button"
-                    data-accept-id="${request.id}"
-                >
-                    ✓ Elfogad
-                </button>
-
-                <button
-                    type="button"
-                    class="secondary-button"
-                    data-reject-id="${request.id}"
-                >
-                    ✕ Elutasít
-                </button>
-
-            </div>
-
-        </div>
-    `).join("");
+        `).join("");
 }
+
 
 async function acceptFriend(id) {
     try {
         await api(
-            `/api/friends/${id}/accept`,
+            `/api/friends/${Number(id)}/accept`,
             {
                 method: "POST",
                 body: JSON.stringify({})
@@ -784,10 +946,11 @@ async function acceptFriend(id) {
     }
 }
 
+
 async function rejectFriend(id) {
     try {
         await api(
-            `/api/friends/${id}/reject`,
+            `/api/friends/${Number(id)}/reject`,
             {
                 method: "POST",
                 body: JSON.stringify({})
@@ -808,55 +971,213 @@ async function rejectFriend(id) {
         );
     }
 }
+
+
 /* ============================================================
-   CHAT
+   🔎 BARÁTKERESÉS
    ============================================================ */
 
-async function openChat(friendId) {
-    const friend = state.friends.find(
-        item => Number(item.id) === Number(friendId)
-    );
+async function searchUsers() {
+    const input =
+        $("userSearch");
 
-    if (!friend) {
-        showToast("A barát nem található.", "error");
+    const box =
+        $("searchResults");
+
+    if (!input || !box) {
+        console.error(
+            "Hiányzik a userSearch vagy searchResults."
+        );
         return;
     }
 
-    state.currentFriend = friend;
+    const query =
+        String(input.value || "").trim();
 
-    const chatTitle = $("chatTitle");
-    const chatSubtitle = $("chatSubtitle");
+    if (!query) {
+        state.searchUsers = [];
 
-    if (chatTitle) {
-        chatTitle.textContent = friend.name;
+        box.innerHTML =
+            `<div class="empty-inline">
+                Írj be egy nevet vagy felhasználónevet.
+            </div>`;
+
+        return;
     }
 
-    if (chatSubtitle) {
-        chatSubtitle.textContent =
-            `@${friend.username}`;
-    }
+    box.innerHTML =
+        `<div class="empty-inline">
+            🔎 Keresés: <strong>${escapeHTML(query)}</strong>...
+        </div>`;
 
-    navigate("chatPage");
-
-    await loadMessages(friend.id);
-}
-
-async function loadMessages(friendId) {
     try {
-        const data = await api(
-            `/api/messages/${friendId}`
-        );
+        /*
+           FONTOS:
+           encodeURIComponent miatt szóköz, ékezet,
+           @ stb. is biztonságosan elküldhető.
+        */
 
-        state.messages = data.messages || [];
+        const url =
+            `/api/users?q=${encodeURIComponent(query)}`;
 
-        renderMessages();
+        const data =
+            await api(url);
+
+        state.searchUsers =
+            Array.isArray(data.users)
+                ? data.users
+                : [];
+
+        renderSearchResults();
 
     } catch (error) {
         console.error(
-            "Üzenetek betöltése:",
+            "Barátkeresési hiba:",
             error
         );
 
+        state.searchUsers = [];
+
+        box.innerHTML =
+            `<div class="empty-inline">
+                ❌ ${escapeHTML(
+                    error.message ||
+                    "Hiba történt a keresés közben."
+                )}
+            </div>`;
+    }
+}
+
+
+function scheduleFriendSearch() {
+    clearTimeout(
+        friendSearchTimer
+    );
+
+    friendSearchTimer =
+        setTimeout(
+            searchUsers,
+            300
+        );
+}
+
+
+function renderSearchResults() {
+    const box =
+        $("searchResults");
+
+    if (!box) {
+        return;
+    }
+
+    if (!state.searchUsers.length) {
+        box.innerHTML =
+            `<div class="empty-inline">
+                Nem található ilyen tanuló.
+            </div>`;
+        return;
+    }
+
+    const friendIds =
+        new Set(
+            state.friends.map(
+                friend => Number(friend.id)
+            )
+        );
+
+    box.innerHTML =
+        state.searchUsers
+            .map(user => {
+                const id =
+                    Number(user.id);
+
+                const isFriend =
+                    friendIds.has(id);
+
+                const name =
+                    user.name ||
+                    user.username ||
+                    "Ismeretlen";
+
+                const username =
+                    user.username ||
+                    "";
+
+                const grade =
+                    user.grade
+                        ? `${user.grade}. osztály`
+                        : "";
+
+                return `
+                    <div class="search-result-card">
+
+                        <div class="friend-avatar">
+                            ${escapeHTML(
+                                name
+                                    .charAt(0)
+                                    .toUpperCase()
+                            )}
+                        </div>
+
+                        <div class="friend-info">
+
+                            <strong>
+                                ${escapeHTML(name)}
+                            </strong>
+
+                            <span>
+                                @${escapeHTML(username)}
+                                ${grade
+                                    ? ` · ${escapeHTML(grade)}`
+                                    : ""}
+                            </span>
+
+                        </div>
+
+                        ${
+                            isFriend
+                                ? `
+                                    <span class="count-pill">
+                                        ✓ Barát
+                                    </span>
+                                  `
+                                : `
+                                    <button
+                                        type="button"
+                                        class="primary-button"
+                                        data-request-id="${id}">
+                                        + Barátnak jelölés
+                                    </button>
+                                  `
+                        }
+
+                    </div>
+                `;
+            })
+            .join("");
+}
+
+
+async function sendFriendRequest(id) {
+    try {
+        await api(
+            "/api/friends/request",
+            {
+                method: "POST",
+                body: JSON.stringify({
+                    userId: Number(id)
+                })
+            }
+        );
+
+        showToast(
+            "Barátkérelem elküldve! 👥",
+            "success"
+        );
+
+        await searchUsers();
+
+    } catch (error) {
         showToast(
             error.message,
             "error"
@@ -864,252 +1185,226 @@ async function loadMessages(friendId) {
     }
 }
 
-function renderMessages() {
-    const box = $("messages");
 
-    if (!box) return;
+/* ============================================================
+   CHAT
+   ============================================================ */
 
-    if (!state.messages.length) {
-        box.innerHTML = `
-            <div class="empty-inline">
-                Még nincs üzenet.
-            </div>
-        `;
-        return;
-    }
+async function openChat(friendId) {
+    const friend =
+        state.friends.find(
+            f =>
+                Number(f.id) ===
+                Number(friendId)
+        );
 
-    box.innerHTML = state.messages.map(message => {
-        const own =
-            Number(message.sender) ===
-            Number(state.user?.id);
-
-        if (message.type === "material") {
-            return `
-                <div class="message-row ${own ? "own" : "other"}">
-                    <div class="message material-message">
-
-                        <div class="material-icon">
-                            📖
-                        </div>
-
-                        <div class="material-content">
-                            <strong>
-                                Tananyag érkezett
-                            </strong>
-
-                            <span>
-                                ${escapeHTML(
-                                    message.message || "Új tananyag"
-                                )}
-                            </span>
-
-                            ${
-                                message.materialId
-                                    ? `
-                                        <button
-                                            type="button"
-                                            class="primary-button"
-                                            data-open-material="${message.materialId}"
-                                        >
-                                            📖 Megnyitás
-                                        </button>
-                                    `
-                                    : ""
-                            }
-                        </div>
-
-                        <small>
-                            ${formatDate(message.date)}
-                        </small>
-
-                    </div>
-                </div>
-            `;
-        }
-
-        return `
-            <div class="message-row ${own ? "own" : "other"}">
-                <div class="message">
-
-                    <div class="message-text">
-                        ${escapeHTML(message.message)}
-                    </div>
-
-                    <small>
-                        ${formatDate(message.date)}
-                    </small>
-
-                </div>
-            </div>
-        `;
-    }).join("");
-
-    box.scrollTop = box.scrollHeight;
-}
-
-async function sendMessage() {
-    if (!state.currentFriend) {
+    if (!friend) {
         showToast(
-            "Előbb válassz ki egy barátot.",
+            "A barát nem található.",
             "error"
         );
         return;
     }
 
-    const input = $("messageInput");
+    state.currentFriend =
+        friend;
 
-    if (!input) return;
+    if ($("chatTitle")) {
+        $("chatTitle").textContent =
+            friend.name;
+    }
 
-    const message = input.value.trim();
+    if ($("chatAvatar")) {
+        $("chatAvatar").textContent =
+            (
+                friend.name ||
+                "?"
+            )
+            .charAt(0)
+            .toUpperCase();
+    }
 
-    if (!message) return;
+    if ($("chatStatus")) {
+        $("chatStatus").textContent =
+            "Barát";
+    }
 
-    const button = $("sendMessageButton");
+    openModal(
+        "chatModal"
+    );
 
-    if (button) {
-        button.disabled = true;
+    await loadMessages();
+
+    setTimeout(
+        () => {
+            $("chatInput")?.focus();
+        },
+        100
+    );
+}
+
+
+async function loadMessages() {
+    if (!state.currentFriend) {
+        return;
+    }
+
+    try {
+        const data =
+            await api(
+                `/api/messages/${Number(
+                    state.currentFriend.id
+                )}`
+            );
+
+        state.currentMessages =
+            Array.isArray(data.messages)
+                ? data.messages
+                : [];
+
+        renderMessages();
+
+    } catch (error) {
+        console.error(
+            "Üzenetek betöltési hiba:",
+            error
+        );
+    }
+}
+
+
+function renderMessages() {
+    const box =
+        $("chatMessages");
+
+    if (!box) {
+        return;
+    }
+
+    if (!state.currentMessages.length) {
+        box.innerHTML = `
+            <div class="empty-state compact-empty">
+                <div class="empty-icon">💬</div>
+                <h3>Még nincs üzenet</h3>
+                <p>
+                    Írj egy üzenetet a beszélgetés
+                    indításához.
+                </p>
+            </div>
+        `;
+        return;
+    }
+
+    box.innerHTML =
+        state.currentMessages
+            .map(message => {
+                const mine =
+                    Number(message.sender) ===
+                    Number(state.user?.id);
+
+                const isMaterial =
+                    message.type === "material";
+
+                return `
+                    <div class="message-row ${
+                        mine
+                            ? "mine"
+                            : "theirs"
+                    }">
+
+                        <div class="message-bubble ${
+                            isMaterial
+                                ? "material-message"
+                                : ""
+                        }">
+
+                            ${
+                                isMaterial
+                                    ? `
+                                        <strong>
+                                            📚 Tananyag
+                                        </strong>
+
+                                        <div>
+                                            ${escapeHTML(
+                                                message.message || ""
+                                            )}
+                                        </div>
+
+                                        ${
+                                            message.materialId
+                                                ? `
+                                                    <button
+                                                        type="button"
+                                                        class="text-button"
+                                                        data-material-id="${Number(message.materialId)}">
+                                                        Megnyitás →
+                                                    </button>
+                                                  `
+                                                : ""
+                                        }
+                                      `
+                                    : escapeHTML(
+                                        message.message || ""
+                                      )
+                                        .replaceAll(
+                                            "\n",
+                                            "<br>"
+                                        )
+                            }
+
+                            <small>
+                                ${escapeHTML(
+                                    formatDate(
+                                        message.date
+                                    )
+                                )}
+                            </small>
+
+                        </div>
+
+                    </div>
+                `;
+            })
+            .join("");
+
+    box.scrollTop =
+        box.scrollHeight;
+}
+
+
+async function sendMessage() {
+    if (!state.currentFriend) {
+        return;
+    }
+
+    const input =
+        $("chatInput");
+
+    const message =
+        input?.value.trim();
+
+    if (!message) {
+        return;
     }
 
     try {
         await api(
-            `/api/messages/${state.currentFriend.id}`,
+            `/api/messages/${Number(
+                state.currentFriend.id
+            )}`,
             {
                 method: "POST",
                 body: JSON.stringify({
-                    message
+                    message,
+                    type: "text"
                 })
             }
         );
 
         input.value = "";
 
-        await loadMessages(
-            state.currentFriend.id
-        );
-
-    } catch (error) {
-        showToast(
-            error.message,
-            "error"
-        );
-
-    } finally {
-        if (button) {
-            button.disabled = false;
-        }
-    }
-}
-
-let chatRefreshTimer = null;
-
-function startChatRefresh() {
-    clearInterval(chatRefreshTimer);
-
-    chatRefreshTimer = setInterval(() => {
-        if (
-            state.currentFriend &&
-            !$("chatPage")?.classList.contains("hidden")
-        ) {
-            loadMessages(
-                state.currentFriend.id
-            );
-        }
-    }, 3000);
-}
-
-/* ============================================================
-   TANANYAGOK
-   ============================================================ */
-
-async function loadMaterials() {
-    try {
-        const data = await api(
-            "/api/materials"
-        );
-
-        state.materials =
-            data.materials || [];
-
-        renderMaterials();
-
-    } catch (error) {
-        console.error(
-            "Tananyagok betöltése:",
-            error
-        );
-    }
-}
-
-function renderMaterials() {
-    const box = $("materialsList");
-
-    if (!box) return;
-
-    if (!state.materials.length) {
-        box.innerHTML = `
-            <div class="empty-inline">
-                Még nincs tananyagod.
-            </div>
-        `;
-        return;
-    }
-
-    box.innerHTML = state.materials.map(material => `
-        <div class="material-card">
-
-            <div class="material-card-icon">
-                ${
-                    material.type === "test"
-                        ? "📝"
-                        : material.type === "homework"
-                            ? "📚"
-                            : "📖"
-                }
-            </div>
-
-            <div class="material-card-content">
-
-                <h3>
-                    ${escapeHTML(material.title)}
-                </h3>
-
-                <span>
-                    ${escapeHTML(material.subject)}
-                </span>
-
-                <small>
-                    ${formatDate(material.date)}
-                </small>
-
-            </div>
-
-            <button
-                type="button"
-                class="primary-button"
-                data-open-material="${material.id}"
-            >
-                Megnyitás
-            </button>
-
-        </div>
-    `).join("");
-}
-
-async function openMaterial(materialId) {
-    try {
-        const data = await api(
-            `/api/materials/${materialId}`
-        );
-
-        const material = data.material;
-
-        if (!material) {
-            throw new Error(
-                "A tananyag nem található."
-            );
-        }
-
-        showMaterialViewer(material);
+        await loadMessages();
 
     } catch (error) {
         showToast(
@@ -1119,182 +1414,39 @@ async function openMaterial(materialId) {
     }
 }
 
-function showMaterialViewer(material) {
-    closeDynamicModal();
-
-    const modal =
-        document.createElement("div");
-
-    modal.id = "dynamicMaterialModal";
-    modal.className = "modal-overlay";
-
-    modal.innerHTML = `
-        <div class="modal-card material-viewer">
-
-            <button
-                type="button"
-                class="modal-close"
-                data-close-modal
-            >
-                ×
-            </button>
-
-            <div class="material-viewer-header">
-
-                <div>
-                    <span class="material-label">
-                        ${escapeHTML(material.subject)}
-                    </span>
-
-                    <h2>
-                        ${escapeHTML(material.title)}
-                    </h2>
-                </div>
-
-                <div class="material-type">
-                    ${escapeHTML(material.type || "material")}
-                </div>
-
-            </div>
-
-            <div class="material-viewer-content">
-                ${formatMaterialContent(material.content)}
-            </div>
-
-        </div>
-    `;
-
-    document.body.appendChild(modal);
-}
-
-function formatMaterialContent(content) {
-    return escapeHTML(content || "")
-        .replace(/\n/g, "<br>");
-}
-
-function closeDynamicModal() {
-    const modal =
-        $("dynamicMaterialModal");
-
-    if (modal) {
-        modal.remove();
-    }
-}
 
 /* ============================================================
-   AI TANULÁSI ANYAG
+   AI TANANYAG
    ============================================================ */
 
 function openAIModal() {
-    const modal = $("aiModal");
+    state.generatedAI = null;
+    state.aiType = "material";
 
-    if (!modal) {
-        createAIModal();
-        return;
+    if ($("aiSubject")) {
+        $("aiSubject").value = "";
     }
 
-    modal.classList.remove("hidden");
-    modal.style.display = "flex";
+    if ($("aiTopic")) {
+        $("aiTopic").value = "";
+    }
+
+    if ($("aiStatus")) {
+        $("aiStatus").textContent = "";
+    }
+
+    document
+        .querySelectorAll("[data-ai-type]")
+        .forEach(button => {
+            button.classList.toggle(
+                "active",
+                button.dataset.aiType === "material"
+            );
+        });
+
+    openModal("aiModal");
 }
 
-function closeAIModal() {
-    const modal = $("aiModal");
-
-    if (!modal) return;
-
-    modal.classList.add("hidden");
-    modal.style.display = "none";
-}
-
-function createAIModal() {
-    const modal =
-        document.createElement("div");
-
-    modal.id = "aiModal";
-    modal.className = "modal-overlay";
-
-    modal.innerHTML = `
-        <div class="modal-card">
-
-            <button
-                type="button"
-                class="modal-close"
-                data-close-modal
-            >
-                ×
-            </button>
-
-            <h2>🧙 AI tanulási anyag</h2>
-
-            <p>
-                Add meg, miből szeretnél tanulni.
-            </p>
-
-            <label>
-                Tantárgy
-            </label>
-
-            <input
-                id="aiSubject"
-                type="text"
-                placeholder="Pl. matematika"
-            >
-
-            <label>
-                Téma
-            </label>
-
-            <input
-                id="aiTopic"
-                type="text"
-                placeholder="Pl. másodfokú egyenlet"
-            >
-
-            <label>
-                Típus
-            </label>
-
-            <select id="aiType">
-                <option value="material">
-                    📖 Tananyag
-                </option>
-
-                <option value="test">
-                    📝 Teszt
-                </option>
-
-                <option value="homework">
-                    📚 Házi feladat
-                </option>
-            </select>
-
-            <div class="modal-actions">
-
-                <button
-                    type="button"
-                    class="secondary-button"
-                    data-close-modal
-                >
-                    Mégse
-                </button>
-
-                <button
-                    type="button"
-                    class="primary-button"
-                    id="generateAIButton"
-                >
-                    🧙 Létrehozás
-                </button>
-
-            </div>
-
-            <div id="aiResult"></div>
-
-        </div>
-    `;
-
-    document.body.appendChild(modal);
-}
 
 async function generateAI() {
     const subject =
@@ -1302,12 +1454,6 @@ async function generateAI() {
 
     const topic =
         $("aiTopic")?.value.trim();
-
-    const type =
-        $("aiType")?.value || "material";
-
-    const result =
-        $("aiResult");
 
     if (!subject || !topic) {
         showToast(
@@ -1317,295 +1463,327 @@ async function generateAI() {
         return;
     }
 
-    const button =
-        $("generateAIButton");
-
-    if (button) {
-        button.disabled = true;
-        button.textContent =
-            "⏳ Létrehozás...";
-    }
-
-    if (result) {
-        result.innerHTML = `
-            <div class="empty-inline">
-                🧙 Az AI elkészíti a tananyagot...
-            </div>
-        `;
-    }
-
     try {
-        const data = await api(
-            "/api/ai/generate",
-            {
-                method: "POST",
-                body: JSON.stringify({
-                    subject,
-                    topic,
-                    type
-                })
-            }
-        );
+        if ($("aiStatus")) {
+            $("aiStatus").textContent =
+                "✨ Tananyag készítése...";
+        }
+
+        const data =
+            await api(
+                "/api/ai/generate",
+                {
+                    method: "POST",
+                    body: JSON.stringify({
+                        subject,
+                        topic,
+                        type: state.aiType
+                    })
+                }
+            );
+
+        state.generatedAI =
+            data;
+
+        closeModal("aiModal");
 
         showAIPreview(data);
 
     } catch (error) {
-        if (result) {
-            result.innerHTML = `
-                <div class="empty-inline error">
-                    ❌ ${escapeHTML(error.message)}
-                </div>
+        console.error(
+            "AI hiba:",
+            error
+        );
+
+        if ($("aiStatus")) {
+            $("aiStatus").textContent =
+                error.message;
+        }
+
+        showToast(
+            error.message,
+            "error"
+        );
+    }
+}
+
+
+function showAIPreview(data) {
+    if (!data) {
+        return;
+    }
+
+    if ($("previewTitle")) {
+        $("previewTitle").textContent =
+            data.title ||
+            "AI tananyag";
+    }
+
+    if ($("previewContent")) {
+        let html = "";
+
+        if (data.explanation) {
+            html += `
+                <h3>📖 Magyarázat</h3>
+                <p>
+                    ${escapeHTML(
+                        data.explanation
+                    )}
+                </p>
             `;
         }
 
-    } finally {
-        if (button) {
-            button.disabled = false;
-            button.textContent =
-                "🧙 Létrehozás";
-        }
-    }
-}
-
-function showAIPreview(data) {
-    const result =
-        $("aiResult");
-
-    if (!result) return;
-
-    result.innerHTML = `
-        <div class="ai-preview">
-
-            <h3>
-                ${escapeHTML(data.title || "Tananyag")}
-            </h3>
-
-            <div class="ai-section">
-                <strong>📖 Magyarázat</strong>
-                <p>
-                    ${escapeHTML(data.explanation || "")}
-                </p>
-            </div>
-
-            <div class="ai-section">
-                <strong>⭐ Fontos</strong>
-                <p>
-                    ${escapeHTML(data.important || "")}
-                </p>
-            </div>
-
-            <div class="ai-section">
-                <strong>💡 Példák</strong>
-                <p>
-                    ${escapeHTML(data.examples || "")}
-                </p>
-            </div>
-
-            <div class="ai-section">
-                <strong>📌 Összefoglalás</strong>
-                <p>
-                    ${escapeHTML(data.summary || "")}
-                </p>
-            </div>
-
-            <div class="modal-actions">
-
-                <button
-                    type="button"
-                    class="secondary-button"
-                    data-close-modal
-                >
-                    Mégse
-                </button>
-
-                <button
-                    type="button"
-                    class="primary-button"
-                    id="approveAIButton"
-                >
-                    ✓ Tananyag mentése
-                </button>
-
-            </div>
-
-        </div>
-    `;
-
-    window.__tbLastAI = data;
-}
-
-async function approveAI() {
-    const data =
-        window.__tbLastAI;
-
-    if (!data) {
-        showToast(
-            "Nincs menthető AI tananyag.",
-            "error"
-        );
-        return;
-    }
-
-    const friends = state.friends || [];
-
-    if (!friends.length) {
-        try {
-            await saveGeneratedMaterial(
-                data,
-                null
-            );
-
-            showToast(
-                "Tananyag elmentve! 📖",
-                "success"
-            );
-
-            closeAIModal();
-            await loadMaterials();
-
-        } catch (error) {
-            showToast(
-                error.message,
-                "error"
-            );
+        if (Array.isArray(data.important)) {
+            html += `
+                <h3>⭐ Fontos fogalmak</h3>
+                <ul>
+                    ${
+                        data.important
+                            .map(
+                                item =>
+                                    `<li>${escapeHTML(item)}</li>`
+                            )
+                            .join("")
+                    }
+                </ul>
+            `;
         }
 
-        return;
-    }
-
-    showFriendSelectForMaterial(data);
-}
-
-async function saveGeneratedMaterial(
-    data,
-    friendId = null
-) {
-    const material = {
-        subject: data.subject,
-        title: data.title,
-        content: data.content ||
-            [
-                data.explanation,
-                data.important,
-                data.examples,
-                data.summary
-            ].filter(Boolean).join("\n\n"),
-        type: data.type || "material"
-    };
-
-    if (friendId) {
-        material.friendId =
-            Number(friendId);
-    }
-
-    return await api(
-        "/api/materials",
-        {
-            method: "POST",
-            body: JSON.stringify(material)
+        if (data.examples) {
+            html += `
+                <h3>💡 Példák</h3>
+                <p>
+                    ${escapeHTML(
+                        data.examples
+                    ).replaceAll(
+                        "\n",
+                        "<br>"
+                    )}
+                </p>
+            `;
         }
+
+        if (data.summary) {
+            html += `
+                <h3>📝 Összefoglaló</h3>
+                <p>
+                    ${escapeHTML(
+                        data.summary
+                    )}
+                </p>
+            `;
+        }
+
+        $("previewContent").innerHTML =
+            html ||
+            "<p>Nincs megjeleníthető tartalom.</p>";
+    }
+
+    openModal(
+        "previewModal"
     );
 }
 
-function showFriendSelectForMaterial(data) {
-    const modal =
-        document.createElement("div");
 
-    modal.id = "materialFriendModal";
-    modal.className = "modal-overlay";
+/* ============================================================
+   TANANYAG KÜLDÉSE
+   ============================================================ */
 
-    modal.innerHTML = `
-        <div class="modal-card">
+function renderSendFriendList() {
+    const box =
+        $("sendFriendList");
 
-            <button
-                type="button"
-                class="modal-close"
-                data-close-material-friend
-            >
-                ×
-            </button>
+    if (!box) {
+        return;
+    }
 
-            <h2>
-                📤 Tananyag küldése
-            </h2>
-
-            <p>
-                Válaszd ki, melyik barátodnak
-                szeretnéd elküldeni.
-            </p>
-
-            <div class="friend-select-list">
-
-                ${state.friends.map(friend => `
-                    <button
-                        type="button"
-                        class="friend-select-item"
-                        data-send-material-friend="${friend.id}"
-                    >
-                        <span class="friend-avatar">
-                            ${escapeHTML(
-                                getInitial(friend.name)
-                            )}
-                        </span>
-
-                        <span>
-                            <strong>
-                                ${escapeHTML(friend.name)}
-                            </strong>
-
-                            <small>
-                                @${escapeHTML(friend.username)}
-                            </small>
-                        </span>
-
-                    </button>
-                `).join("")}
-
+    if (!state.friends.length) {
+        box.innerHTML = `
+            <div class="empty-state compact-empty">
+                <div class="empty-icon">👥</div>
+                <h3>Nincs még barátod</h3>
+                <p>
+                    Előbb jelölj valakit barátnak.
+                </p>
             </div>
+        `;
+        return;
+    }
 
-            <button
-                type="button"
-                class="secondary-button"
-                data-save-material-only
-            >
-                💾 Csak mentés
-            </button>
+    box.innerHTML =
+        state.friends
+            .map(friend => `
+                <button
+                    type="button"
+                    class="select-friend-item"
+                    data-send-friend-id="${Number(friend.id)}">
 
-        </div>
-    `;
+                    <span class="friend-avatar">
+                        ${escapeHTML(
+                            (
+                                friend.name ||
+                                "?"
+                            )
+                            .charAt(0)
+                            .toUpperCase()
+                        )}
+                    </span>
 
-    document.body.appendChild(modal);
+                    <span>
+                        <strong>
+                            ${escapeHTML(
+                                friend.name || ""
+                            )}
+                        </strong>
 
-    window.__tbMaterialForSend = data;
+                        <small>
+                            @${escapeHTML(
+                                friend.username || ""
+                            )}
+                        </small>
+                    </span>
+
+                </button>
+            `)
+            .join("");
 }
 
-async function sendMaterialToFriend(friendId) {
-    const data =
-        window.__tbMaterialForSend;
 
-    if (!data) return;
+function approveAndSendAI() {
+    if (!state.generatedAI) {
+        return;
+    }
 
-    try {
-        await saveGeneratedMaterial(
-            data,
-            friendId
+    if (!state.friends.length) {
+        closeModal(
+            "previewModal"
         );
 
         showToast(
-            "Tananyag elküldve! 📤",
-            "success"
+            "Nincs még barátod, akinek elküldhetnéd.",
+            "info"
         );
 
-        const modal =
-            $("materialFriendModal");
+        return;
+    }
 
-        if (modal) {
-            modal.remove();
+    renderSendFriendList();
+
+    openModal(
+        "sendFriendModal"
+    );
+}
+
+
+async function sendGeneratedMaterial(friendId) {
+    const data =
+        state.generatedAI;
+
+    if (!data) {
+        return;
+    }
+
+    try {
+        const content =
+            JSON.stringify({
+                explanation:
+                    data.explanation || "",
+
+                important:
+                    data.important || [],
+
+                examples:
+                    data.examples || "",
+
+                summary:
+                    data.summary || ""
+            });
+
+        const saved =
+            await api(
+                "/api/materials",
+                {
+                    method: "POST",
+                    body: JSON.stringify({
+                        subject:
+                            data.subject,
+
+                        title:
+                            data.title,
+
+                        content,
+
+                        type:
+                            data.type ||
+                            state.aiType,
+
+                        friendId:
+                            Number(friendId)
+                    })
+                }
+            );
+
+        /*
+           Ha a server.js már létrehozta az üzenetet,
+           nem küldünk még egyet.
+           Ha nem, akkor létrehozzuk.
+        */
+
+        if (
+            saved &&
+            saved.material &&
+            saved.material.id
+        ) {
+            try {
+                await api(
+                    `/api/messages/${Number(friendId)}`,
+                    {
+                        method: "POST",
+                        body: JSON.stringify({
+                            message:
+                                `📚 ${data.title}`,
+
+                            type:
+                                "material",
+
+                            materialId:
+                                saved.material.id
+                        })
+                    }
+                );
+            } catch (messageError) {
+                console.warn(
+                    "A tananyag mentve lett, de az üzenetküldés hibázott.",
+                    messageError
+                );
+            }
         }
 
-        closeAIModal();
+        closeModal(
+            "sendFriendModal"
+        );
+
+        closeModal(
+            "previewModal"
+        );
+
+        state.generatedAI =
+            null;
 
         await loadMaterials();
+
+        if (
+            state.currentFriend &&
+            Number(state.currentFriend.id) ===
+                Number(friendId)
+        ) {
+            await loadMessages();
+        }
+
+        showToast(
+            "A tananyag elküldve! 📚",
+            "success"
+        );
 
     } catch (error) {
         showToast(
@@ -1614,197 +1792,2307 @@ async function sendMaterialToFriend(friendId) {
         );
     }
 }
-/* =========================================================
-   TANULÓBARÁT – BARÁTKERESÉS JAVÍTÁS
-   Ezt a kódot az app.js VÉGÉRE kell tenni.
-   ========================================================= */
 
-(function () {
-    let searchTimer = null;
 
-    async function fixedFriendSearch() {
-        const input = document.getElementById("userSearch");
-        const results = document.getElementById("searchResults");
+/* ============================================================
+   TANANYAGOK
+   ============================================================ */
 
-        if (!input || !results) {
-            console.error("TanulóBarát: nem található a barátkeresés HTML eleme.");
-            return;
-        }
-
-        const query = input.value.trim();
-
-        if (!query) {
-            results.innerHTML =
-                '<div class="empty-inline">Írj be egy nevet vagy felhasználónevet.</div>';
-
-            if (typeof state !== "undefined") {
-                state.searchUsers = [];
-            }
-
-            return;
-        }
-
-        results.innerHTML =
-            '<div class="empty-inline">🔎 Keresés folyamatban...</div>';
-
-        try {
-            const response = await fetch(
-                "/api/users?q=" + encodeURIComponent(query),
-                {
-                    method: "GET",
-                    credentials: "include",
-                    headers: {
-                        "Accept": "application/json"
-                    }
-                }
+async function openMaterial(id) {
+    try {
+        const data =
+            await api(
+                `/api/materials/${Number(id)}`
             );
 
-            const data = await response.json();
+        const material =
+            data.material;
 
-            if (!response.ok) {
-                throw new Error(
-                    data.error || "A keresés sikertelen."
+        if (!material) {
+            throw new Error(
+                "A tananyag nem található."
+            );
+        }
+
+        if ($("materialTitle")) {
+            $("materialTitle").textContent =
+                material.title || "Tananyag";
+        }
+
+        if ($("materialContent")) {
+            try {
+                const parsed =
+                    JSON.parse(
+                        material.content
+                    );
+
+                showMaterialData(
+                    $("materialContent"),
+                    parsed
                 );
-            }
 
-            const users = Array.isArray(data.users)
-                ? data.users
+            } catch (_) {
+                $("materialContent").innerHTML =
+                    `<p>${escapeHTML(
+                        material.content || ""
+                    ).replaceAll(
+                        "\n",
+                        "<br>"
+                    )}</p>`;
+            }
+        }
+
+        openModal(
+            "materialModal"
+        );
+
+    } catch (error) {
+        showToast(
+            error.message,
+            "error"
+        );
+    }
+}
+
+
+function showMaterialData(
+    container,
+    data
+) {
+    if (!container) {
+        return;
+    }
+
+    let html = "";
+
+    if (data.explanation) {
+        html += `
+            <h3>📖 Magyarázat</h3>
+            <p>
+                ${escapeHTML(
+                    data.explanation
+                )}
+            </p>
+        `;
+    }
+
+    if (Array.isArray(data.important)) {
+        html += `
+            <h3>⭐ Fontos fogalmak</h3>
+            <ul>
+                ${
+                    data.important
+                        .map(
+                            item =>
+                                `<li>${escapeHTML(item)}</li>`
+                        )
+                        .join("")
+                }
+            </ul>
+        `;
+    }
+
+    if (data.examples) {
+        html += `
+            <h3>💡 Példák</h3>
+            <p>
+                ${escapeHTML(
+                    data.examples
+                ).replaceAll(
+                    "\n",
+                    "<br>"
+                )}
+            </p>
+        `;
+    }
+
+    if (data.summary) {
+        html += `
+            <h3>📝 Összefoglaló</h3>
+            <p>
+                ${escapeHTML(
+                    data.summary
+                )}
+            </p>
+        `;
+    }
+
+    container.innerHTML =
+        html ||
+        "<p>Nincs megjeleníthető tartalom.</p>";
+}
+
+
+async function loadMaterials() {
+    try {
+        const data =
+            await api(
+                "/api/materials"
+            );
+
+        state.materials =
+            Array.isArray(data.materials)
+                ? data.materials
                 : [];
 
-            if (typeof state !== "undefined") {
-                state.searchUsers = users;
-            }
+        renderMaterials();
+        renderHomeMaterials();
 
-            if (users.length === 0) {
-                results.innerHTML =
-                    '<div class="empty-inline">😕 Nem található ilyen felhasználó.</div>';
-                return;
-            }
+        if ($("materialCount")) {
+            $("materialCount").textContent =
+                state.materials.length;
+        }
 
-            results.innerHTML = users.map(function (user) {
-                const name = escapeHTML(
-                    user.name || user.username || "Ismeretlen"
+    } catch (error) {
+        console.error(
+            "Tananyag betöltési hiba:",
+            error
+        );
+    }
+}
+
+
+function renderMaterials() {
+    const box =
+        $("materialList");
+
+    if (!box) {
+        return;
+    }
+
+    const search =
+        (
+            $("materialSearch")
+                ?.value || ""
+        )
+        .trim()
+        .toLowerCase();
+
+    const filter =
+        $("materialTypeFilter")
+            ?.value || "all";
+
+    const list =
+        state.materials.filter(
+            material => {
+                const text =
+                    `${material.title || ""} ${material.subject || ""}`
+                        .toLowerCase();
+
+                const matchesText =
+                    !search ||
+                    text.includes(search);
+
+                const matchesType =
+                    filter === "all" ||
+                    (material.type || "material") ===
+                        filter;
+
+                return (
+                    matchesText &&
+                    matchesType
                 );
+            }
+        );
 
-                const username = escapeHTML(
-                    user.username || ""
-                );
+    if (!list.length) {
+        box.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">📚</div>
+                <h3>Nincs megjeleníthető tananyag</h3>
+                <p>
+                    Készíts egy új anyagot
+                    az AI segítségével.
+                </p>
 
-                const grade = user.grade
-                    ? `${user.grade}. évfolyam`
-                    : "";
+                <button
+                    class="primary-button"
+                    type="button"
+                    data-open-ai>
+                    🧙 Tananyag készítése
+                </button>
+            </div>
+        `;
+
+        return;
+    }
+
+    box.innerHTML =
+        list
+            .map(material => {
+                const icon =
+                    material.type === "test"
+                        ? "📝"
+                        : material.type === "homework"
+                            ? "📋"
+                            : "📖";
 
                 return `
-                    <div class="search-user-card">
-                        <div class="search-user-info">
-                            <div class="search-user-avatar">
-                                ${user.avatar
-                                    ? `<img src="${escapeHTML(user.avatar)}" alt="">`
-                                    : "👤"
-                                }
-                            </div>
+                    <article class="material-card">
 
-                            <div>
-                                <strong>${name}</strong>
-                                <div class="muted">
-                                    @${username}
-                                    ${grade ? " • " + grade : ""}
-                                </div>
-                            </div>
+                        <div class="material-icon">
+                            ${icon}
+                        </div>
+
+                        <div>
+                            <h3>
+                                ${escapeHTML(
+                                    material.title || ""
+                                )}
+                            </h3>
+
+                            <p>
+                                ${escapeHTML(
+                                    material.subject || ""
+                                )}
+                            </p>
+
+                            <small>
+                                ${escapeHTML(
+                                    formatDate(
+                                        material.date
+                                    )
+                                )}
+                            </small>
                         </div>
 
                         <button
-                            class="primary-button"
                             type="button"
-                            data-action="send-friend-request"
-                            data-user-id="${escapeHTML(String(user.id))}"
-                        >
-                            ➕ Barátnak jelölés
+                            class="secondary-button"
+                            data-material-id="${Number(material.id)}">
+                            Megnyitás
                         </button>
-                    </div>
-                `;
-            }).join("");
 
-        } catch (error) {
-            console.error(
-                "TanulóBarát barátkeresési hiba:",
-                error
+                    </article>
+                `;
+            })
+            .join("");
+}
+
+
+function renderHomeMaterials() {
+    const box =
+        $("homeMaterialList");
+
+    if (!box) {
+        return;
+    }
+
+    const list =
+        state.materials.slice(0, 4);
+
+    if (!list.length) {
+        box.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">📚</div>
+                <h3>Még nincs tananyagod</h3>
+                <p>
+                    Készíts egyet a
+                    TanulóBarát AI segítségével.
+                </p>
+            </div>
+        `;
+
+        return;
+    }
+
+    box.innerHTML =
+        list
+            .map(material => `
+                <article class="material-card">
+
+                    <div class="material-icon">
+                        📖
+                    </div>
+
+                    <div>
+                        <h3>
+                            ${escapeHTML(
+                                material.title || ""
+                            )}
+                        </h3>
+
+                        <p>
+                            ${escapeHTML(
+                                material.subject || ""
+                            )}
+                        </p>
+                    </div>
+
+                    <button
+                        type="button"
+                        class="secondary-button"
+                        data-material-id="${Number(material.id)}">
+                        Megnyitás
+                    </button>
+
+                </article>
+            `)
+            .join("");
+}
+
+
+/* ============================================================
+   JEGYEK
+   ============================================================ */
+
+async function loadGrades() {
+    if (!state.user) {
+        return;
+    }
+
+    try {
+        const data =
+            await api(
+                `/api/grades/${Number(
+                    state.user.id
+                )}`
             );
 
-            results.innerHTML = `
-                <div class="empty-inline">
-                    ❌ ${escapeHTML(
-                        error.message || "Hiba történt a keresés közben."
-                    )}
+        state.grades =
+            Array.isArray(data.grades)
+                ? data.grades
+                : [];
+
+        renderGrades();
+
+    } catch (error) {
+        console.error(
+            "Jegyek betöltési hiba:",
+            error
+        );
+    }
+}
+
+
+function renderGrades() {
+    const box =
+        $("gradesList");
+
+    if (!box) {
+        return;
+    }
+
+    if (!state.grades.length) {
+        box.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">📊</div>
+                <h3>Még nincsenek jegyeid</h3>
+                <p>
+                    A barátaid által adott jegyek
+                    itt jelennek meg.
+                </p>
+            </div>
+        `;
+    } else {
+        box.innerHTML =
+            state.grades
+                .map(grade => `
+                    <div class="grade-card">
+
+                        <div>
+                            <strong>
+                                ${escapeHTML(
+                                    grade.subject || ""
+                                )}
+                            </strong>
+
+                            <span>
+                                ${escapeHTML(
+                                    grade.giverName ||
+                                    "Ismeretlen"
+                                )}
+                            </span>
+
+                            <small>
+                                ${escapeHTML(
+                                    formatDate(
+                                        grade.date
+                                    )
+                                )}
+                            </small>
+                        </div>
+
+                        <div class="grade-number">
+                            ${escapeHTML(
+                                grade.grade
+                            )}
+                        </div>
+
+                    </div>
+                `)
+                .join("");
+    }
+
+    const numbers =
+        state.grades
+            .map(g => Number(g.grade))
+            .filter(
+                n => n >= 1 && n <= 5
+            );
+
+    const average =
+        numbers.length
+            ? numbers.reduce(
+                (a, b) => a + b,
+                0
+            ) / numbers.length
+            : 0;
+
+    if ($("gradesAverage")) {
+        $("gradesAverage").textContent =
+            average
+                ? average.toFixed(2)
+                : "-";
+    }
+
+    if ($("averageGrade")) {
+        $("averageGrade").textContent =
+            average
+                ? average.toFixed(2)
+                : "-";
+    }
+
+    if ($("gradesStars")) {
+        const rounded =
+            Math.round(average);
+
+        $("gradesStars").textContent =
+            "★".repeat(rounded) +
+            "☆".repeat(
+                5 - rounded
+            );
+    }
+}
+
+
+/* ============================================================
+   ÉRTÉKELÉS
+   ============================================================ */
+
+function openRating(
+    friendId,
+    friendName
+) {
+    const friend =
+        state.friends.find(
+            f =>
+                Number(f.id) ===
+                Number(friendId)
+        );
+
+    if (!friend) {
+        return;
+    }
+
+    state.ratingTargetId =
+        Number(friendId);
+
+    state.ratingValue = 0;
+
+    if ($("ratingFriendName")) {
+        $("ratingFriendName").textContent =
+            friendName ||
+            friend.name;
+    }
+
+    if ($("ratingFriendAvatar")) {
+        $("ratingFriendAvatar").textContent =
+            (
+                friend.name ||
+                "?"
+            )
+            .charAt(0)
+            .toUpperCase();
+    }
+
+    updateRatingStars();
+
+    openModal(
+        "ratingModal"
+    );
+}
+
+
+function updateRatingStars() {
+    document
+        .querySelectorAll(
+            "#ratingStars button"
+        )
+        .forEach(button => {
+            const value =
+                Number(
+                    button.dataset.rating
+                );
+
+            button.classList.toggle(
+                "selected",
+                value <=
+                    state.ratingValue
+            );
+        });
+
+    if ($("ratingSelected")) {
+        $("ratingSelected").textContent =
+            state.ratingValue
+                ? `${state.ratingValue} / 5 csillag`
+                : "Válassz értékelést";
+    }
+
+    if ($("submitRatingButton")) {
+        $("submitRatingButton").disabled =
+            state.ratingValue === 0;
+    }
+}
+
+
+async function submitRating() {
+    if (
+        !state.ratingTargetId ||
+        !state.ratingValue
+    ) {
+        return;
+    }
+
+    try {
+        await api(
+            "/api/ratings",
+            {
+                method: "POST",
+                body: JSON.stringify({
+                    ratedUserId:
+                        state.ratingTargetId,
+
+                    stars:
+                        state.ratingValue
+                })
+            }
+        );
+
+        closeModal(
+            "ratingModal"
+        );
+
+        showToast(
+            "Értékelés elküldve! ⭐",
+            "success"
+        );
+
+    } catch (error) {
+        showToast(
+            error.message,
+            "error"
+        );
+    }
+}
+
+
+/* ============================================================
+   JEGY ADÁSA
+   ============================================================ */
+
+function openGrade(
+    friendId,
+    friendName
+) {
+    const friend =
+        state.friends.find(
+            f =>
+                Number(f.id) ===
+                Number(friendId)
+        );
+
+    if (!friend) {
+        return;
+    }
+
+    state.gradeTargetId =
+        Number(friendId);
+
+    state.gradeValue = 0;
+
+    if ($("gradeFriendName")) {
+        $("gradeFriendName").textContent =
+            friendName ||
+            friend.name;
+    }
+
+    if ($("gradeFriendAvatar")) {
+        $("gradeFriendAvatar").textContent =
+            (
+                friend.name ||
+                "?"
+            )
+            .charAt(0)
+            .toUpperCase();
+    }
+
+    if ($("gradeSubject")) {
+        $("gradeSubject").value = "";
+    }
+
+    document
+        .querySelectorAll(
+            "#gradeOptions button"
+        )
+        .forEach(button => {
+            button.classList.remove(
+                "selected"
+            );
+        });
+
+    if ($("selectedGrade")) {
+        $("selectedGrade").textContent =
+            "Válassz jegyet";
+    }
+
+    if ($("submitGradeButton")) {
+        $("submitGradeButton").disabled =
+            true;
+    }
+
+    openModal(
+        "gradeModal"
+    );
+}
+
+
+async function submitGrade() {
+    const subject =
+        $("gradeSubject")
+            ?.value.trim();
+
+    if (!state.gradeTargetId) {
+        showToast(
+            "Nincs kiválasztott barát.",
+            "error"
+        );
+        return;
+    }
+
+    if (!subject) {
+        showToast(
+            "Add meg a tantárgyat!",
+            "error"
+        );
+        return;
+    }
+
+    if (!state.gradeValue) {
+        showToast(
+            "Válassz egy jegyet!",
+            "error"
+        );
+        return;
+    }
+
+    try {
+        await api(
+            "/api/grades",
+            {
+                method: "POST",
+                body: JSON.stringify({
+                    receiverId:
+                        state.gradeTargetId,
+
+                    subject,
+
+                    grade:
+                        state.gradeValue
+                })
+            }
+        );
+
+        closeModal(
+            "gradeModal"
+        );
+
+        showToast(
+            "Jegy elküldve! 📊",
+            "success"
+        );
+
+        state.gradeTargetId =
+            null;
+
+        state.gradeValue =
+            0;
+
+    } catch (error) {
+        showToast(
+            error.message,
+            "error"
+        );
+    }
+}
+
+
+/* ============================================================
+   PROFIL SZERKESZTÉS
+   ============================================================ */
+
+function defaultAvatar(name) {
+    return (
+        "https://ui-avatars.com/api/?name=" +
+        encodeURIComponent(
+            name || "Tanuló"
+        ) +
+        "&background=2563eb&color=ffffff&size=256"
+    );
+}
+
+
+function profileEditorHTML() {
+    if ($("profileEditModal")) {
+        return;
+    }
+
+    const modal =
+        document.createElement("div");
+
+    modal.id =
+        "profileEditModal";
+
+    modal.className =
+        "modal-overlay hidden";
+
+    modal.innerHTML = `
+        <div
+            class="modal-window"
+            style="max-width:520px;width:calc(100% - 32px);">
+
+            <div class="modal-header">
+
+                <div>
+                    <span class="eyebrow">
+                        PROFIL
+                    </span>
+
+                    <h2>
+                        ✏️ Profil szerkesztése
+                    </h2>
                 </div>
-            `;
+
+                <button
+                    class="modal-close"
+                    type="button"
+                    id="closeProfileEditButton">
+                    ×
+                </button>
+
+            </div>
+
+            <div style="padding:4px 0 10px;">
+
+                <div
+                    style="
+                        text-align:center;
+                        margin-bottom:18px;
+                    ">
+
+                    <img
+                        id="editProfileAvatarPreview"
+                        src=""
+                        alt="Profilkép"
+                        style="
+                            width:100px;
+                            height:100px;
+                            border-radius:50%;
+                            object-fit:cover;
+                            border:4px solid #e5e7eb;
+                            display:block;
+                            margin:0 auto 12px;
+                        ">
+
+                    <label
+                        for="editProfileAvatar"
+                        class="secondary-button"
+                        style="
+                            display:inline-flex;
+                            cursor:pointer;
+                        ">
+                        📷 Profilkép feltöltése
+                    </label>
+
+                    <input
+                        id="editProfileAvatar"
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        style="display:none;">
+
+                    <div
+                        id="editProfileAvatarName"
+                        style="
+                            font-size:12px;
+                            opacity:.7;
+                            margin-top:8px;
+                        ">
+                        Nincs új kép kiválasztva
+                    </div>
+
+                </div>
+
+                <div class="input-group">
+                    <label for="editProfileName">
+                        Név
+                    </label>
+
+                    <input
+                        id="editProfileName"
+                        type="text"
+                        maxlength="50"
+                        placeholder="Név">
+                </div>
+
+                <div class="input-group">
+                    <label for="editProfileUsername">
+                        Felhasználónév
+                    </label>
+
+                    <input
+                        id="editProfileUsername"
+                        type="text"
+                        maxlength="30"
+                        placeholder="felhasznalonev">
+                </div>
+
+                <div class="input-group">
+                    <label for="editProfileEmail">
+                        E-mail
+                    </label>
+
+                    <input
+                        id="editProfileEmail"
+                        type="email"
+                        maxlength="100"
+                        placeholder="email@pelda.hu">
+                </div>
+
+                <div class="input-group">
+                    <label for="editProfileGrade">
+                        Évfolyam
+                    </label>
+
+                    <select id="editProfileGrade">
+                        ${Array.from(
+                            { length: 8 },
+                            (_, i) =>
+                                `<option value="${i + 5}">
+                                    ${i + 5}. évfolyam
+                                </option>`
+                        ).join("")}
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="editProfilePassword">
+                        Új jelszó
+                    </label>
+
+                    <input
+                        id="editProfilePassword"
+                        type="password"
+                        minlength="6"
+                        placeholder="Üresen hagyható">
+                </div>
+
+                <div
+                    id="profileEditMessage"
+                    style="
+                        display:none;
+                        margin-top:10px;
+                        padding:10px;
+                        border-radius:10px;
+                        text-align:center;
+                    ">
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button
+                    id="cancelProfileEditButton"
+                    class="secondary-button"
+                    type="button">
+                    Mégsem
+                </button>
+
+                <button
+                    id="saveProfileButton"
+                    class="primary-button"
+                    type="button">
+                    💾 Mentés
+                </button>
+
+            </div>
+
+        </div>
+    `;
+
+    document.body.appendChild(
+        modal
+    );
+
+    $("closeProfileEditButton")
+        ?.addEventListener(
+            "click",
+            closeProfileEditor
+        );
+
+    $("cancelProfileEditButton")
+        ?.addEventListener(
+            "click",
+            closeProfileEditor
+        );
+
+    $("saveProfileButton")
+        ?.addEventListener(
+            "click",
+            saveProfile
+        );
+
+    $("editProfileAvatar")
+        ?.addEventListener(
+            "change",
+            previewProfileImage
+        );
+
+    modal.addEventListener(
+        "click",
+        event => {
+            if (
+                event.target ===
+                modal
+            ) {
+                closeProfileEditor();
+            }
         }
+    );
+}
+
+
+function ensureProfileEditButton() {
+    const page =
+        $("page-profile");
+
+    if (
+        !page ||
+        $("editProfileButton")
+    ) {
+        return;
     }
 
+    const button =
+        document.createElement(
+            "button"
+        );
 
-    function startFriendSearch() {
-        clearTimeout(searchTimer);
+    button.id =
+        "editProfileButton";
 
-        searchTimer = setTimeout(function () {
-            fixedFriendSearch();
-        }, 250);
-    }
+    button.type =
+        "button";
 
+    button.className =
+        "primary-button";
 
-    function connectFriendSearch() {
-        const input = document.getElementById("userSearch");
-        const button = document.getElementById("searchUsersButton");
+    button.textContent =
+        "✏️ Profil szerkesztése";
 
-        if (input) {
-            input.addEventListener("input", function () {
-                startFriendSearch();
-            });
+    button.style.marginTop =
+        "16px";
 
-            input.addEventListener("keydown", function (event) {
-                if (event.key === "Enter") {
-                    event.preventDefault();
+    button.addEventListener(
+        "click",
+        openProfileEditor
+    );
 
-                    clearTimeout(searchTimer);
+    const card =
+        page.querySelector(".card") ||
+        page.firstElementChild;
 
-                    fixedFriendSearch();
-                }
-            });
-
-            input.addEventListener("search", function () {
-                fixedFriendSearch();
-            });
-        }
-
-        if (button) {
-            button.addEventListener("click", function (event) {
-                event.preventDefault();
-
-                clearTimeout(searchTimer);
-
-                fixedFriendSearch();
-            });
-        }
-
-        console.log("✅ TanulóBarát: barátkeresés javító modul betöltve.");
-    }
-
-
-    /*
-       Megvárjuk, hogy az oldal teljesen betöltődjön.
-    */
-    if (document.readyState === "loading") {
-        document.addEventListener(
-            "DOMContentLoaded",
-            connectFriendSearch
+    if (card) {
+        card.appendChild(
+            button
         );
     } else {
-        connectFriendSearch();
+        page.appendChild(
+            button
+        );
+    }
+}
+
+
+function clearProfileMessage() {
+    const box =
+        $("profileEditMessage");
+
+    if (!box) {
+        return;
+    }
+
+    box.textContent = "";
+    box.style.display = "none";
+}
+
+
+function showProfileMessage(
+    text,
+    type = "error"
+) {
+    const box =
+        $("profileEditMessage");
+
+    if (!box) {
+        return;
+    }
+
+    box.textContent =
+        text;
+
+    box.style.display =
+        "block";
+
+    if (type === "success") {
+        box.style.background =
+            "#dcfce7";
+
+        box.style.color =
+            "#166534";
+    } else {
+        box.style.background =
+            "#fee2e2";
+
+        box.style.color =
+            "#991b1b";
+    }
+}
+
+
+function resizeImage(file) {
+    return new Promise(
+        (resolve, reject) => {
+            const reader =
+                new FileReader();
+
+            reader.onerror =
+                reject;
+
+            reader.onload =
+                () => {
+                    const image =
+                        new Image();
+
+                    image.onerror =
+                        reject;
+
+                    image.onload =
+                        () => {
+                            const max =
+                                512;
+
+                            const scale =
+                                Math.min(
+                                    1,
+                                    max /
+                                        Math.max(
+                                            image.width,
+                                            image.height
+                                        )
+                                );
+
+                            const canvas =
+                                document.createElement(
+                                    "canvas"
+                                );
+
+                            canvas.width =
+                                Math.max(
+                                    1,
+                                    Math.round(
+                                        image.width *
+                                            scale
+                                    )
+                                );
+
+                            canvas.height =
+                                Math.max(
+                                    1,
+                                    Math.round(
+                                        image.height *
+                                            scale
+                                    )
+                                );
+
+                            const context =
+                                canvas.getContext(
+                                    "2d"
+                                );
+
+                            context.drawImage(
+                                image,
+                                0,
+                                0,
+                                canvas.width,
+                                canvas.height
+                            );
+
+                            resolve(
+                                canvas.toDataURL(
+                                    "image/jpeg",
+                                    0.82
+                                )
+                            );
+                        };
+
+                    image.src =
+                        reader.result;
+                };
+
+            reader.readAsDataURL(
+                file
+            );
+        }
+    );
+}
+
+
+async function previewProfileImage(event) {
+    const file =
+        event.target.files?.[0];
+
+    if (!file) {
+        return;
+    }
+
+    if (
+        !file.type.startsWith(
+            "image/"
+        )
+    ) {
+        event.target.value =
+            "";
+
+        showProfileMessage(
+            "Csak képfájlt választhatsz."
+        );
+
+        return;
+    }
+
+    if (
+        file.size >
+        8 * 1024 * 1024
+    ) {
+        event.target.value =
+            "";
+
+        showProfileMessage(
+            "A kép maximum 8 MB lehet."
+        );
+
+        return;
+    }
+
+    try {
+        const data =
+            await resizeImage(
+                file
+            );
+
+        window.__tbSelectedAvatar =
+            data;
+
+        if (
+            $("editProfileAvatarPreview")
+        ) {
+            $("editProfileAvatarPreview").src =
+                data;
+        }
+
+        if (
+            $("editProfileAvatarName")
+        ) {
+            $("editProfileAvatarName").textContent =
+                file.name;
+        }
+
+        clearProfileMessage();
+
+    } catch (error) {
+        console.error(
+            error
+        );
+
+        showProfileMessage(
+            "Nem sikerült feldolgozni a képet."
+        );
+    }
+}
+
+
+async function openProfileEditor() {
+    if (!state.user) {
+        return;
+    }
+
+    profileEditorHTML();
+
+    clearProfileMessage();
+
+    window.__tbSelectedAvatar =
+        null;
+
+    if ($("editProfilePassword")) {
+        $("editProfilePassword").value =
+            "";
+    }
+
+    if ($("editProfileAvatar")) {
+        $("editProfileAvatar").value =
+            "";
+    }
+
+    if ($("editProfileAvatarName")) {
+        $("editProfileAvatarName").textContent =
+            "Nincs új kép kiválasztva";
+    }
+
+    if ($("editProfileAvatarPreview")) {
+        $("editProfileAvatarPreview").src =
+            state.user.avatar ||
+            defaultAvatar(
+                state.user.name
+            );
+    }
+
+    if ($("editProfileName")) {
+        $("editProfileName").value =
+            state.user.name || "";
+    }
+
+    if ($("editProfileUsername")) {
+        $("editProfileUsername").value =
+            state.user.username || "";
+    }
+
+    if ($("editProfileEmail")) {
+        $("editProfileEmail").value =
+            state.user.email || "";
+    }
+
+    if ($("editProfileGrade")) {
+        $("editProfileGrade").value =
+            String(
+                state.user.grade || 5
+            );
+    }
+
+    openModal(
+        "profileEditModal"
+    );
+}
+
+
+function closeProfileEditor() {
+    closeModal(
+        "profileEditModal"
+    );
+}
+
+
+async function saveProfile() {
+    const name =
+        $("editProfileName")
+            ?.value.trim();
+
+    const username =
+        $("editProfileUsername")
+            ?.value.trim();
+
+    const email =
+        $("editProfileEmail")
+            ?.value.trim();
+
+    const grade =
+        Number(
+            $("editProfileGrade")
+                ?.value
+        );
+
+    const password =
+        $("editProfilePassword")
+            ?.value || "";
+
+    if (
+        !name ||
+        !username ||
+        !email ||
+        !grade
+    ) {
+        showProfileMessage(
+            "Tölts ki minden mezőt!"
+        );
+        return;
+    }
+
+    if (
+        grade < 5 ||
+        grade > 12
+    ) {
+        showProfileMessage(
+            "Az évfolyam 5 és 12 között lehet."
+        );
+        return;
+    }
+
+    if (
+        password &&
+        password.length < 6
+    ) {
+        showProfileMessage(
+            "Az új jelszó legalább 6 karakter legyen."
+        );
+        return;
+    }
+
+    const button =
+        $("saveProfileButton");
+
+    if (button) {
+        button.disabled = true;
+        button.textContent =
+            "⏳ Mentés...";
+    }
+
+    try {
+        const body = {
+            name,
+            username,
+            email,
+            grade
+        };
+
+        if (password) {
+            body.password =
+                password;
+        }
+
+        if (
+            window.__tbSelectedAvatar
+        ) {
+            body.avatar =
+                window.__tbSelectedAvatar;
+        }
+
+        const data =
+            await api(
+                "/api/profile",
+                {
+                    method: "PUT",
+                    body:
+                        JSON.stringify(
+                            body
+                        )
+                }
+            );
+
+        if (!data.user) {
+            throw new Error(
+                "A szerver nem küldte vissza a profilt."
+            );
+        }
+
+        state.user =
+            data.user;
+
+        updateUserUI();
+
+        showProfileMessage(
+            "Profil sikeresen frissítve!",
+            "success"
+        );
+
+        window.__tbSelectedAvatar =
+            null;
+
+        setTimeout(
+            closeProfileEditor,
+            700
+        );
+
+    } catch (error) {
+        console.error(
+            "Profil mentési hiba:",
+            error
+        );
+
+        showProfileMessage(
+            error.message ||
+            "Nem sikerült menteni a profilt."
+        );
+
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.textContent =
+                "💾 Mentés";
+        }
+    }
+}
+
+
+/* ============================================================
+   ÖSSZES ADAT BETÖLTÉSE
+   ============================================================ */
+
+async function loadAll() {
+    setLoading(
+        true,
+        "Adatok betöltése..."
+    );
+
+    await Promise.allSettled([
+        loadFriends(),
+        loadRequests(),
+        loadGrades(),
+        loadMaterials()
+    ]);
+
+    updateUserUI();
+
+    setLoading(
+        false
+    );
+}
+
+
+/* ============================================================
+   ESEMÉNYEK
+   ============================================================ */
+
+function setupEvents() {
+
+    /* ---------------- LOGIN ---------------- */
+
+    $("loginForm")
+        ?.addEventListener(
+            "submit",
+            event => {
+                event.preventDefault();
+                login();
+            }
+        );
+
+
+    /* ---------------- REGISTER ---------------- */
+
+    $("registerForm")
+        ?.addEventListener(
+            "submit",
+            event => {
+                event.preventDefault();
+                register();
+            }
+        );
+
+
+    /* ---------------- LOGOUT ---------------- */
+
+    $("logoutButton")
+        ?.addEventListener(
+            "click",
+            event => {
+                event.preventDefault();
+                logout();
+            }
+        );
+
+
+    /* ---------------- LOGIN TAB ---------------- */
+
+    $("loginTab")
+        ?.addEventListener(
+            "click",
+            event => {
+                event.preventDefault();
+
+                $("loginTab")
+                    ?.classList.add(
+                        "active"
+                    );
+
+                $("registerTab")
+                    ?.classList.remove(
+                        "active"
+                    );
+
+                $("loginForm")
+                    ?.classList.remove(
+                        "hidden"
+                    );
+
+                $("registerForm")
+                    ?.classList.add(
+                        "hidden"
+                    );
+
+                if ($("loginForm")) {
+                    $("loginForm").style.display =
+                        "";
+                }
+
+                if ($("registerForm")) {
+                    $("registerForm").style.display =
+                        "none";
+                }
+            }
+        );
+
+
+    /* ---------------- REGISTER TAB ---------------- */
+
+    $("registerTab")
+        ?.addEventListener(
+            "click",
+            event => {
+                event.preventDefault();
+
+                $("registerTab")
+                    ?.classList.add(
+                        "active"
+                    );
+
+                $("loginTab")
+                    ?.classList.remove(
+                        "active"
+                    );
+
+                $("registerForm")
+                    ?.classList.remove(
+                        "hidden"
+                    );
+
+                $("loginForm")
+                    ?.classList.add(
+                        "hidden"
+                    );
+
+                if ($("registerForm")) {
+                    $("registerForm").style.display =
+                        "";
+                }
+
+                if ($("loginForm")) {
+                    $("loginForm").style.display =
+                        "none";
+                }
+            }
+        );
+
+
+    /* ---------------- PASSWORD ---------------- */
+
+    document
+        .querySelectorAll(
+            "[data-password-target]"
+        )
+        .forEach(button => {
+            button.addEventListener(
+                "click",
+                () => {
+                    const input =
+                        $(
+                            button.dataset
+                                .passwordTarget
+                        );
+
+                    if (!input) {
+                        return;
+                    }
+
+                    input.type =
+                        input.type ===
+                        "password"
+                            ? "text"
+                            : "password";
+                }
+            );
+        });
+
+
+    /* ========================================================
+       BARÁTKERESÉS
+       ======================================================== */
+
+    const searchInput =
+        $("userSearch");
+
+    const searchButton =
+        $("searchUsersButton");
+
+
+    if (searchInput) {
+
+        searchInput.addEventListener(
+            "input",
+            () => {
+                scheduleFriendSearch();
+            }
+        );
+
+        searchInput.addEventListener(
+            "keydown",
+            event => {
+                if (
+                    event.key ===
+                    "Enter"
+                ) {
+                    event.preventDefault();
+
+                    clearTimeout(
+                        friendSearchTimer
+                    );
+
+                    searchUsers();
+                }
+            }
+        );
+
+        searchInput.addEventListener(
+            "search",
+            () => {
+                searchUsers();
+            }
+        );
     }
 
 
-    /*
-       Globálisan is elérhetővé tesszük.
-    */
-    window.fixedFriendSearch = fixedFriendSearch;
+    if (searchButton) {
+        searchButton.addEventListener(
+            "click",
+            event => {
+                event.preventDefault();
 
-})();
+                clearTimeout(
+                    friendSearchTimer
+                );
+
+                searchUsers();
+            }
+        );
+    }
+
+
+    /* ---------------- MATERIAL SEARCH ---------------- */
+
+    $("materialSearch")
+        ?.addEventListener(
+            "input",
+            renderMaterials
+        );
+
+    $("materialTypeFilter")
+        ?.addEventListener(
+            "change",
+            renderMaterials
+        );
+
+
+    /* ---------------- CHAT ---------------- */
+
+    $("chatInput")
+        ?.addEventListener(
+            "keydown",
+            event => {
+                if (
+                    event.key ===
+                    "Enter" &&
+                    !event.shiftKey
+                ) {
+                    event.preventDefault();
+                    sendMessage();
+                }
+            }
+        );
+
+    $("sendChatButton")
+        ?.addEventListener(
+            "click",
+            sendMessage
+        );
+
+
+    /* ---------------- AI ---------------- */
+
+    [
+        "homeAIButton",
+        "learningAIButton",
+        "emptyLearningAIButton",
+        "bottomAIButton",
+        "chatAIButton"
+    ].forEach(id => {
+        $(id)?.addEventListener(
+            "click",
+            openAIModal
+        );
+    });
+
+    $("generateAIButton")
+        ?.addEventListener(
+            "click",
+            generateAI
+        );
+
+    $("approveSendButton")
+        ?.addEventListener(
+            "click",
+            approveAndSendAI
+        );
+
+    $("cancelPreviewButton")
+        ?.addEventListener(
+            "click",
+            () => {
+                closeModal(
+                    "previewModal"
+                );
+
+                state.generatedAI =
+                    null;
+            }
+        );
+
+
+    document
+        .querySelectorAll(
+            "[data-ai-type]"
+        )
+        .forEach(button => {
+            button.addEventListener(
+                "click",
+                () => {
+                    state.aiType =
+                        button.dataset.aiType ||
+                        "material";
+
+                    document
+                        .querySelectorAll(
+                            "[data-ai-type]"
+                        )
+                        .forEach(
+                            other => {
+                                other.classList.toggle(
+                                    "active",
+                                    other ===
+                                        button
+                                );
+                            }
+                        );
+                }
+            );
+        });
+
+
+    /* ---------------- RATING ---------------- */
+
+    $("cancelRatingButton")
+        ?.addEventListener(
+            "click",
+            () => {
+                closeModal(
+                    "ratingModal"
+                );
+            }
+        );
+
+    $("submitRatingButton")
+        ?.addEventListener(
+            "click",
+            submitRating
+        );
+
+
+    document
+        .querySelectorAll(
+            "#ratingStars button"
+        )
+        .forEach(button => {
+            button.addEventListener(
+                "click",
+                () => {
+                    state.ratingValue =
+                        Number(
+                            button.dataset.rating
+                        );
+
+                    updateRatingStars();
+                }
+            );
+        });
+
+
+    /* ---------------- GRADE ---------------- */
+
+    $("cancelGradeButton")
+        ?.addEventListener(
+            "click",
+            () => {
+                closeModal(
+                    "gradeModal"
+                );
+            }
+        );
+
+    $("submitGradeButton")
+        ?.addEventListener(
+            "click",
+            submitGrade
+        );
+
+
+    document
+        .querySelectorAll(
+            "#gradeOptions button"
+        )
+        .forEach(button => {
+            button.addEventListener(
+                "click",
+                () => {
+                    state.gradeValue =
+                        Number(
+                            button.dataset.grade
+                        );
+
+                    document
+                        .querySelectorAll(
+                            "#gradeOptions button"
+                        )
+                        .forEach(
+                            other => {
+                                other.classList.toggle(
+                                    "selected",
+                                    other ===
+                                        button
+                                );
+                            }
+                        );
+
+                    if ($("selectedGrade")) {
+                        $("selectedGrade").textContent =
+                            `${state.gradeValue} / 5`;
+                    }
+
+                    if ($("submitGradeButton")) {
+                        $("submitGradeButton").disabled =
+                            false;
+                    }
+                }
+            );
+        });
+
+
+    /* ========================================================
+       DINAMIKUS GOMBOK
+       ======================================================== */
+
+    document.addEventListener(
+        "click",
+        event => {
+
+            /* OLDAL */
+
+            const nav =
+                event.target.closest(
+                    "[data-page]"
+                );
+
+            if (nav) {
+                event.preventDefault();
+
+                navigate(
+                    nav.dataset.page
+                );
+
+                return;
+            }
+
+
+            /* CHAT */
+
+            const chat =
+                event.target.closest(
+                    "[data-chat-id]"
+                );
+
+            if (chat) {
+                openChat(
+                    Number(
+                        chat.dataset.chatId
+                    )
+                );
+
+                return;
+            }
+
+
+            /* ÉRTÉKELÉS */
+
+            const rate =
+                event.target.closest(
+                    "[data-rate-id]"
+                );
+
+            if (rate) {
+                const friend =
+                    state.friends.find(
+                        f =>
+                            Number(f.id) ===
+                            Number(
+                                rate.dataset.rateId
+                            )
+                    );
+
+                if (friend) {
+                    openRating(
+                        friend.id,
+                        friend.name
+                    );
+                }
+
+                return;
+            }
+
+
+            /* JEGY */
+
+            const grade =
+                event.target.closest(
+                    "[data-grade-id]"
+                );
+
+            if (grade) {
+                const friend =
+                    state.friends.find(
+                        f =>
+                            Number(f.id) ===
+                            Number(
+                                grade.dataset.gradeId
+                            )
+                    );
+
+                if (friend) {
+                    openGrade(
+                        friend.id,
+                        friend.name
+                    );
+                }
+
+                return;
+            }
+
+
+            /* BARÁTI KÉRÉS ELFOGADÁS */
+
+            const accept =
+                event.target.closest(
+                    "[data-accept-id]"
+                );
+
+            if (accept) {
+                acceptFriend(
+                    Number(
+                        accept.dataset.acceptId
+                    )
+                );
+
+                return;
+            }
+
+
+            /* BARÁTI KÉRÉS ELUTASÍTÁS */
+
+            const reject =
+                event.target.closest(
+                    "[data-reject-id]"
+                );
+
+            if (reject) {
+                rejectFriend(
+                    Number(
+                        reject.dataset.rejectId
+                    )
+                );
+
+                return;
+            }
+
+
+            /* BARÁTI KÉRÉS */
+
+            const request =
+                event.target.closest(
+                    "[data-request-id]"
+                );
+
+            if (request) {
+                sendFriendRequest(
+                    Number(
+                        request.dataset.requestId
+                    )
+                );
+
+                return;
+            }
+
+
+            /* TANANYAG */
+
+            const material =
+                event.target.closest(
+                    "[data-material-id]"
+                );
+
+            if (material) {
+                openMaterial(
+                    Number(
+                        material.dataset.materialId
+                    )
+                );
+
+                return;
+            }
+
+
+            /* BARÁT KIVÁLASZTÁSA TANANYAGHOZ */
+
+            const sendFriend =
+                event.target.closest(
+                    "[data-send-friend-id]"
+                );
+
+            if (sendFriend) {
+                sendGeneratedMaterial(
+                    Number(
+                        sendFriend.dataset
+                            .sendFriendId
+                    )
+                );
+
+                return;
+            }
+
+
+            /* AI */
+
+            const ai =
+                event.target.closest(
+                    "[data-open-ai]"
+                );
+
+            if (ai) {
+                openAIModal();
+                return;
+            }
+
+
+            /* MODAL BEZÁRÁSA */
+
+            const close =
+                event.target.closest(
+                    "[data-close-modal]"
+                );
+
+            if (close) {
+                closeModal(
+                    close.dataset
+                        .closeModal
+                );
+
+                return;
+            }
+
+
+            /* MODAL HÁTTÉR */
+
+            if (
+                event.target.classList
+                    .contains(
+                        "modal-overlay"
+                    )
+            ) {
+                closeModal(
+                    event.target.id
+                );
+            }
+        }
+    );
+
+
+    /* ---------------- MOBIL MENÜ ---------------- */
+
+    $("mobileMenuButton")
+        ?.addEventListener(
+            "click",
+            () => {
+                $("sidebar")
+                    ?.classList.toggle(
+                        "open"
+                    );
+            }
+        );
+
+
+    /* ---------------- TÉMA ---------------- */
+
+    $("themeToggle")
+        ?.addEventListener(
+            "click",
+            () => {
+                document.body.classList.toggle(
+                    "light-theme"
+                );
+            }
+        );
+
+
+    /* ---------------- ÉRTESÍTÉS ---------------- */
+
+    $("notificationButton")
+        ?.addEventListener(
+            "click",
+            () => {
+                navigate(
+                    "friends"
+                );
+
+                if (
+                    state.requests.length
+                ) {
+                    showToast(
+                        `${state.requests.length} új baráti kérésed van.`,
+                        "info"
+                    );
+                }
+            }
+        );
+
+
+    /* ---------------- ESC ---------------- */
+
+    document.addEventListener(
+        "keydown",
+        event => {
+            if (
+                event.key ===
+                "Escape"
+            ) {
+                document
+                    .querySelectorAll(
+                        ".modal-overlay.active"
+                    )
+                    .forEach(modal => {
+                        closeModal(
+                            modal.id
+                        );
+                    });
+            }
+        }
+    );
+}
+
+
+/* ============================================================
+   CHAT AUTOMATIKUS FRISSÍTÉS
+   ============================================================ */
+
+setInterval(
+    () => {
+        if (
+            state.currentFriend &&
+            $("chatModal") &&
+            !$("chatModal")
+                .classList
+                .contains("hidden")
+        ) {
+            loadMessages();
+        }
+    },
+    3000
+);
+
+
+/* ============================================================
+   GLOBÁLIS FÜGGVÉNYEK
+   ============================================================ */
+
+Object.assign(
+    window,
+    {
+        navigate,
+        login,
+        register,
+        logout,
+
+        openChat,
+        sendMessage,
+
+        searchUsers,
+        sendFriendRequest,
+        acceptFriend,
+        rejectFriend,
+
+        openAIModal,
+        generateAI,
+        approveAndSendAI,
+
+        openRating,
+        submitRating,
+
+        openGrade,
+        submitGrade,
+
+        openMaterial,
+
+        openModal,
+        closeModal,
+
+        openProfileEditor,
+        closeProfileEditor,
+        saveProfile
+    }
+);
+
+
+/* ============================================================
+   INDÍTÁS
+   ============================================================ */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    async () => {
+        console.log(
+            "🚀 TanulóBarát betöltve"
+        );
+
+        setupEvents();
+
+        profileEditorHTML();
+
+        ensureProfileEditButton();
+
+        /*
+           Alapból a belépési képernyő látszik.
+        */
+
+        showAuth();
+
+        /*
+           Ha van érvényes session,
+           automatikusan belépünk.
+        */
+
+        await checkLogin();
+    }
+);
