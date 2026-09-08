@@ -1614,3 +1614,197 @@ async function sendMaterialToFriend(friendId) {
         );
     }
 }
+/* =========================================================
+   TANULÓBARÁT – BARÁTKERESÉS JAVÍTÁS
+   Ezt a kódot az app.js VÉGÉRE kell tenni.
+   ========================================================= */
+
+(function () {
+    let searchTimer = null;
+
+    async function fixedFriendSearch() {
+        const input = document.getElementById("userSearch");
+        const results = document.getElementById("searchResults");
+
+        if (!input || !results) {
+            console.error("TanulóBarát: nem található a barátkeresés HTML eleme.");
+            return;
+        }
+
+        const query = input.value.trim();
+
+        if (!query) {
+            results.innerHTML =
+                '<div class="empty-inline">Írj be egy nevet vagy felhasználónevet.</div>';
+
+            if (typeof state !== "undefined") {
+                state.searchUsers = [];
+            }
+
+            return;
+        }
+
+        results.innerHTML =
+            '<div class="empty-inline">🔎 Keresés folyamatban...</div>';
+
+        try {
+            const response = await fetch(
+                "/api/users?q=" + encodeURIComponent(query),
+                {
+                    method: "GET",
+                    credentials: "include",
+                    headers: {
+                        "Accept": "application/json"
+                    }
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    data.error || "A keresés sikertelen."
+                );
+            }
+
+            const users = Array.isArray(data.users)
+                ? data.users
+                : [];
+
+            if (typeof state !== "undefined") {
+                state.searchUsers = users;
+            }
+
+            if (users.length === 0) {
+                results.innerHTML =
+                    '<div class="empty-inline">😕 Nem található ilyen felhasználó.</div>';
+                return;
+            }
+
+            results.innerHTML = users.map(function (user) {
+                const name = escapeHTML(
+                    user.name || user.username || "Ismeretlen"
+                );
+
+                const username = escapeHTML(
+                    user.username || ""
+                );
+
+                const grade = user.grade
+                    ? `${user.grade}. évfolyam`
+                    : "";
+
+                return `
+                    <div class="search-user-card">
+                        <div class="search-user-info">
+                            <div class="search-user-avatar">
+                                ${user.avatar
+                                    ? `<img src="${escapeHTML(user.avatar)}" alt="">`
+                                    : "👤"
+                                }
+                            </div>
+
+                            <div>
+                                <strong>${name}</strong>
+                                <div class="muted">
+                                    @${username}
+                                    ${grade ? " • " + grade : ""}
+                                </div>
+                            </div>
+                        </div>
+
+                        <button
+                            class="primary-button"
+                            type="button"
+                            data-action="send-friend-request"
+                            data-user-id="${escapeHTML(String(user.id))}"
+                        >
+                            ➕ Barátnak jelölés
+                        </button>
+                    </div>
+                `;
+            }).join("");
+
+        } catch (error) {
+            console.error(
+                "TanulóBarát barátkeresési hiba:",
+                error
+            );
+
+            results.innerHTML = `
+                <div class="empty-inline">
+                    ❌ ${escapeHTML(
+                        error.message || "Hiba történt a keresés közben."
+                    )}
+                </div>
+            `;
+        }
+    }
+
+
+    function startFriendSearch() {
+        clearTimeout(searchTimer);
+
+        searchTimer = setTimeout(function () {
+            fixedFriendSearch();
+        }, 250);
+    }
+
+
+    function connectFriendSearch() {
+        const input = document.getElementById("userSearch");
+        const button = document.getElementById("searchUsersButton");
+
+        if (input) {
+            input.addEventListener("input", function () {
+                startFriendSearch();
+            });
+
+            input.addEventListener("keydown", function (event) {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+
+                    clearTimeout(searchTimer);
+
+                    fixedFriendSearch();
+                }
+            });
+
+            input.addEventListener("search", function () {
+                fixedFriendSearch();
+            });
+        }
+
+        if (button) {
+            button.addEventListener("click", function (event) {
+                event.preventDefault();
+
+                clearTimeout(searchTimer);
+
+                fixedFriendSearch();
+            });
+        }
+
+        console.log("✅ TanulóBarát: barátkeresés javító modul betöltve.");
+    }
+
+
+    /*
+       Megvárjuk, hogy az oldal teljesen betöltődjön.
+    */
+    if (document.readyState === "loading") {
+        document.addEventListener(
+            "DOMContentLoaded",
+            connectFriendSearch
+        );
+    } else {
+        connectFriendSearch();
+    }
+
+
+    /*
+       Globálisan is elérhetővé tesszük.
+    */
+    window.fixedFriendSearch = fixedFriendSearch;
+
+})();
