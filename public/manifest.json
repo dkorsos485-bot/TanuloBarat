@@ -1,0 +1,26 @@
+{
+    "name": "TanulóBarát",
+    "short_name": "TanulóBarát",
+    "description": "Tanulj, fejlődj és tartsd a kapcsolatot a barátaiddal.",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#000000",
+    "theme_color": "#000000",
+    "lang": "hu",
+    "icons": [
+        {
+            "src": "/1.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/1.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}

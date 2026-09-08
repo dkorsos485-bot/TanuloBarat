@@ -1,372 +1,322 @@
+```html
 <!DOCTYPE html>
 <html lang="hu">
+
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <meta name="theme-color" content="#0b1020">
-    <meta name="description" content="TanulóBarát – modern tanulási és közösségi platform">
-
-    <title>TanulóBarát</title>
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap"
-        rel="stylesheet"
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     >
 
-    <link rel="stylesheet" href="/style.css">
+    <meta
+        name="theme-color"
+        content="#000000"
+    >
+
+    <meta
+        name="description"
+        content="TanulóBarát – modern tanuló és közösségi alkalmazás"
+    >
+
+    <!-- =====================================================
+         PWA / iPHONE BEÁLLÍTÁSOK
+         ===================================================== -->
+
+    <link
+        rel="manifest"
+        href="/manifest.json"
+    >
+
+    <meta
+        name="mobile-web-app-capable"
+        content="yes"
+    >
+
+    <meta
+        name="apple-mobile-web-app-capable"
+        content="yes"
+    >
+
+    <meta
+        name="apple-mobile-web-app-status-bar-style"
+        content="black-translucent"
+    >
+
+    <meta
+        name="apple-mobile-web-app-title"
+        content="TanulóBarát"
+    >
+
+    <!-- TanulóBarát ikon -->
+    <link
+        rel="apple-touch-icon"
+        href="/1.png"
+    >
+
+    <link
+        rel="icon"
+        type="image/png"
+        href="/1.png"
+    >
+
+    <title>
+        TanulóBarát
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="/style.css"
+    >
+
 </head>
+
 
 <body>
 
-<!-- =========================================================
-     HÁTTÉR
-========================================================= -->
 
-<div class="background">
-    <div class="background-orb orb-one"></div>
-    <div class="background-orb orb-two"></div>
-    <div class="background-orb orb-three"></div>
-</div>
+<!-- =====================================================
+     BEJELENTKEZÉS / REGISZTRÁCIÓ
+     ===================================================== -->
 
+<section id="auth">
 
-<!-- =========================================================
-     AUTHENTICATION
-========================================================= -->
+    <div class="authbox">
 
-<section id="authView" class="auth-screen">
-
-    <div class="auth-layout">
-
-        <div class="auth-brand">
-
-            <div class="brand-logo">
-                <span class="brand-logo-icon">✦</span>
-                <span>Tanuló<span>Barát</span></span>
-            </div>
-
-            <div class="auth-hero">
-
-                <div class="hero-badge">
-                    <span class="status-dot"></span>
-                    A tanulás új generációja
-                </div>
-
-                <h1>
-                    Tanulj.
-                    <span>Fejlődj.</span>
-                    Kapcsolódj.
-                </h1>
-
-                <p>
-                    Egy modern hely, ahol a jegyeidet,
-                    tananyagaidat és barátaidat egyetlen
-                    intelligens rendszerben kezelheted.
-                </p>
-
-                <div class="hero-features">
-
-                    <div class="hero-feature">
-                        <div class="feature-icon">📚</div>
-                        <div>
-                            <strong>Okos tanulás</strong>
-                            <span>AI-alapú tananyagok</span>
-                        </div>
-                    </div>
-
-                    <div class="hero-feature">
-                        <div class="feature-icon">👥</div>
-                        <div>
-                            <strong>Barátok</strong>
-                            <span>Tanuljatok együtt</span>
-                        </div>
-                    </div>
-
-                    <div class="hero-feature">
-                        <div class="feature-icon">📊</div>
-                        <div>
-                            <strong>Jegyek</strong>
-                            <span>Kövesd a fejlődésed</span>
-                        </div>
-                    </div>
-
-                </div>
-
-            </div>
+        <div class="logo">
+            TB
         </div>
 
 
-        <!-- AUTH CARD -->
+        <h1>
+            TanulóBarát
+        </h1>
 
-        <div class="auth-card glass-card">
-
-            <div class="auth-card-header">
-
-                <div class="mobile-brand">
-                    <div class="brand-logo">
-                        <span class="brand-logo-icon">✦</span>
-                        <span>Tanuló<span>Barát</span></span>
-                    </div>
-                </div>
-
-                <h2>Üdv újra! 👋</h2>
-
-                <p>
-                    Jelentkezz be, vagy hozz létre
-                    egy új TanulóBarát-fiókot.
-                </p>
-
-            </div>
+        <p>
+            Tanulj, tartsd a kapcsolatot
+            és fejlődj együtt a barátaiddal.
+        </p>
 
 
-            <!-- AUTH TABS -->
+        <!-- TABS -->
 
-            <div class="auth-tabs">
+        <div class="tabs">
 
-                <button
-                    id="loginTab"
-                    class="auth-tab active"
-                    type="button"
-                >
-                    Bejelentkezés
-                </button>
-
-                <button
-                    id="registerTab"
-                    class="auth-tab"
-                    type="button"
-                >
-                    Regisztráció
-                </button>
-
-            </div>
-
-
-            <!-- LOGIN -->
-
-            <form id="loginForm" class="auth-form">
-
-                <div class="input-group">
-
-                    <label for="loginUsername">
-                        Felhasználónév
-                    </label>
-
-                    <div class="input-wrapper">
-                        <span class="input-icon">◉</span>
-
-                        <input
-                            id="loginUsername"
-                            type="text"
-                            placeholder="pl. dominik123"
-                            autocomplete="username"
-                            required
-                        >
-                    </div>
-
-                </div>
-
-
-                <div class="input-group">
-
-                    <label for="loginPassword">
-                        Jelszó
-                    </label>
-
-                    <div class="input-wrapper">
-                        <span class="input-icon">◆</span>
-
-                        <input
-                            id="loginPassword"
-                            type="password"
-                            placeholder="Írd be a jelszavad"
-                            autocomplete="current-password"
-                            required
-                        >
-
-                        <button
-                            type="button"
-                            class="password-toggle"
-                            data-password-target="loginPassword"
-                            aria-label="Jelszó megjelenítése"
-                        >
-                            ◉
-                        </button>
-                    </div>
-
-                </div>
-
-
-                <button
-                    type="submit"
-                    class="primary-button full-width"
-                >
-                    <span>Belépés</span>
-                    <span class="button-arrow">→</span>
-                </button>
-
-            </form>
-
-
-            <!-- REGISTER -->
-
-            <form
-                id="registerForm"
-                class="auth-form hidden"
+            <button
+                id="loginTab"
+                class="active"
+                type="button"
             >
+                Bejelentkezés
+            </button>
 
-                <div class="form-grid">
-
-                    <div class="input-group full">
-
-                        <label for="registerName">
-                            Teljes név
-                        </label>
-
-                        <div class="input-wrapper">
-                            <span class="input-icon">●</span>
-
-                            <input
-                                id="registerName"
-                                type="text"
-                                placeholder="pl. Kovács Dominik"
-                                autocomplete="name"
-                                required
-                            >
-                        </div>
-
-                    </div>
-
-
-                    <div class="input-group">
-
-                        <label for="registerUsername">
-                            Felhasználónév
-                        </label>
-
-                        <div class="input-wrapper">
-                            <span class="input-icon">@</span>
-
-                            <input
-                                id="registerUsername"
-                                type="text"
-                                placeholder="felhasznalonev"
-                                autocomplete="username"
-                                required
-                            >
-                        </div>
-
-                    </div>
-
-
-                    <div class="input-group">
-
-                        <label for="registerEmail">
-                            E-mail
-                        </label>
-
-                        <div class="input-wrapper">
-                            <span class="input-icon">✉</span>
-
-                            <input
-                                id="registerEmail"
-                                type="email"
-                                placeholder="email@example.com"
-                                autocomplete="email"
-                                required
-                            >
-                        </div>
-
-                    </div>
-
-
-                    <div class="input-group">
-
-                        <label for="registerPassword">
-                            Jelszó
-                        </label>
-
-                        <div class="input-wrapper">
-                            <span class="input-icon">◆</span>
-
-                            <input
-                                id="registerPassword"
-                                type="password"
-                                placeholder="Legalább 6 karakter"
-                                autocomplete="new-password"
-                                minlength="6"
-                                required
-                            >
-
-                            <button
-                                type="button"
-                                class="password-toggle"
-                                data-password-target="registerPassword"
-                                aria-label="Jelszó megjelenítése"
-                            >
-                                ◉
-                            </button>
-                        </div>
-
-                    </div>
-
-
-                    <div class="input-group">
-
-                        <label for="registerGrade">
-                            Évfolyam
-                        </label>
-
-                        <div class="input-wrapper select-wrapper">
-                            <span class="input-icon">▣</span>
-
-                            <select
-                                id="registerGrade"
-                                required
-                            >
-                                <option value="">
-                                    Válassz évfolyamot
-                                </option>
-
-                                <option value="5">5. osztály</option>
-                                <option value="6">6. osztály</option>
-                                <option value="7">7. osztály</option>
-                                <option value="8">8. osztály</option>
-                                <option value="9">9. osztály</option>
-                                <option value="10">10. osztály</option>
-                                <option value="11">11. osztály</option>
-                                <option value="12">12. osztály</option>
-                            </select>
-
-                            <span class="select-arrow">⌄</span>
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-                <button
-                    type="submit"
-                    class="primary-button full-width"
-                >
-                    <span>Fiók létrehozása</span>
-                    <span class="button-arrow">→</span>
-                </button>
-
-            </form>
-
-
-            <div
-                id="authMessage"
-                class="form-message"
-                role="alert"
-            ></div>
+            <button
+                id="registerTab"
+                type="button"
+            >
+                Regisztráció
+            </button>
 
         </div>
+
+
+        <!-- LOGIN -->
+
+        <form
+            id="loginForm"
+        >
+
+            <div class="inputbox">
+
+                <label for="loginEmail">
+                    E-mail
+                </label>
+
+                <input
+                    id="loginEmail"
+                    type="email"
+                    placeholder="pelda@email.hu"
+                    autocomplete="email"
+                    required
+                >
+
+            </div>
+
+
+            <div class="inputbox">
+
+                <label for="loginPassword">
+                    Jelszó
+                </label>
+
+                <input
+                    id="loginPassword"
+                    type="password"
+                    placeholder="Jelszavad"
+                    autocomplete="current-password"
+                    required
+                >
+
+            </div>
+
+
+            <button
+                class="primary big-button"
+                type="submit"
+            >
+                Bejelentkezés
+            </button>
+
+        </form>
+
+
+        <!-- REGISTRATION -->
+
+        <form
+            id="registerForm"
+            style="display:none"
+        >
+
+            <div class="inputbox">
+
+                <label for="registerName">
+                    Teljes név
+                </label>
+
+                <input
+                    id="registerName"
+                    type="text"
+                    placeholder="Pl. Kovács Péter"
+                    autocomplete="name"
+                    required
+                >
+
+            </div>
+
+
+            <div class="inputbox">
+
+                <label for="registerUsername">
+                    Felhasználónév
+                </label>
+
+                <input
+                    id="registerUsername"
+                    type="text"
+                    placeholder="pl. peter123"
+                    autocomplete="username"
+                    required
+                >
+
+            </div>
+
+
+            <div class="inputbox">
+
+                <label for="registerEmail">
+                    E-mail
+                </label>
+
+                <input
+                    id="registerEmail"
+                    type="email"
+                    placeholder="pelda@email.hu"
+                    autocomplete="email"
+                    required
+                >
+
+            </div>
+
+
+            <div class="inputbox">
+
+                <label for="registerPassword">
+                    Jelszó
+                </label>
+
+                <input
+                    id="registerPassword"
+                    type="password"
+                    placeholder="Legalább 6 karakter"
+                    autocomplete="new-password"
+                    required
+                >
+
+            </div>
+
+
+            <div class="inputbox">
+
+                <label for="registerGrade">
+                    Évfolyam
+                </label>
+
+                <select
+                    id="registerGrade"
+                    required
+                >
+
+                    <option
+                        value=""
+                        selected
+                        disabled
+                    >
+                        Válaszd ki az évfolyamod
+                    </option>
+
+                    <option value="5">
+                        5. osztály
+                    </option>
+
+                    <option value="6">
+                        6. osztály
+                    </option>
+
+                    <option value="7">
+                        7. osztály
+                    </option>
+
+                    <option value="8">
+                        8. osztály
+                    </option>
+
+                    <option value="9">
+                        9. osztály
+                    </option>
+
+                    <option value="10">
+                        10. osztály
+                    </option>
+
+                    <option value="11">
+                        11. osztály
+                    </option>
+
+                    <option value="12">
+                        12. osztály
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <button
+                class="primary big-button"
+                type="submit"
+            >
+                Fiók létrehozása
+            </button>
+
+        </form>
+
+
+        <div
+            id="authMessage"
+            class="auth-message"
+        ></div>
 
     </div>
 
@@ -374,79 +324,43 @@
 
 
 
-<!-- =========================================================
-     MAIN APP
-========================================================= -->
+<!-- =====================================================
+     ALKALMAZÁS
+     ===================================================== -->
 
-<section id="appView" class="app-screen hidden">
+<section
+    id="app"
+    style="display:none"
+>
 
-    <!-- TOPBAR -->
 
-    <header class="topbar">
+    <!-- FEJLÉC -->
 
-        <div class="topbar-left">
+    <header class="app-header">
 
-            <button
-                id="mobileMenuButton"
-                class="icon-button mobile-only"
-                type="button"
-                aria-label="Menü"
-            >
-                ☰
-            </button>
+        <div class="brand">
 
-            <div class="brand-logo compact">
-                <span class="brand-logo-icon">✦</span>
-                <span>Tanuló<span>Barát</span></span>
+            <div class="brand-logo">
+                TB
             </div>
+
+            <span>
+                TanulóBarát
+            </span>
 
         </div>
 
 
-        <div class="topbar-right">
+        <div class="header-right">
+
+            <div id="headerAvatar"></div>
 
             <button
-                id="themeToggle"
-                class="icon-button"
+                id="logout"
                 type="button"
-                aria-label="Téma váltása"
             >
-                ◐
+                Kilépés
             </button>
-
-            <button
-                id="notificationButton"
-                class="icon-button notification-button"
-                type="button"
-                aria-label="Értesítések"
-            >
-                ♢
-                <span class="notification-dot"></span>
-            </button>
-
-
-            <div class="user-mini-profile">
-
-                <div
-                    id="userAvatar"
-                    class="avatar avatar-small"
-                >
-                    ?
-                </div>
-
-                <div class="user-mini-info">
-
-                    <strong id="topUserName">
-                        Felhasználó
-                    </strong>
-
-                    <span id="topUserGrade">
-                        -
-                    </span>
-
-                </div>
-
-            </div>
 
         </div>
 
@@ -454,3247 +368,128 @@
 
 
 
-    <!-- MAIN LAYOUT -->
+    <!-- FŐ TARTALOM -->
 
-    <div class="app-layout">
+    <main id="content">
 
+    </main>
 
-        <!-- SIDEBAR -->
 
-        <aside id="sidebar" class="sidebar">
 
-            <div class="sidebar-profile">
+    <!-- ALSÓ NAVIGÁCIÓ -->
 
-                <div
-                    id="sidebarAvatar"
-                    class="avatar avatar-large"
-                >
-                    ?
-                </div>
-
-                <div>
-
-                    <strong id="sidebarUserName">
-                        Felhasználó
-                    </strong>
-
-                    <span id="sidebarUserUsername">
-                        @username
-                    </span>
-
-                </div>
-
-            </div>
-
-
-            <nav class="side-navigation">
-
-                <button
-                    class="nav-item active"
-                    type="button"
-                    data-page="home"
-                >
-                    <span class="nav-icon">⌂</span>
-                    <span>Kezdőlap</span>
-                </button>
-
-
-                <button
-                    class="nav-item"
-                    type="button"
-                    data-page="learning"
-                >
-                    <span class="nav-icon">▤</span>
-                    <span>Tanulás</span>
-                </button>
-
-
-                <button
-                    class="nav-item"
-                    type="button"
-                    data-page="grades"
-                >
-                    <span class="nav-icon">◫</span>
-                    <span>Jegyek</span>
-                </button>
-
-
-                <button
-                    class="nav-item"
-                    type="button"
-                    data-page="friends"
-                >
-                    <span class="nav-icon">♧</span>
-                    <span>Barátok</span>
-                    <span
-                        id="friendRequestBadge"
-                        class="nav-badge hidden"
-                    >
-                        0
-                    </span>
-                </button>
-
-
-                <button
-                    class="nav-item"
-                    type="button"
-                    data-page="profile"
-                >
-                    <span class="nav-icon">◎</span>
-                    <span>Profil</span>
-                </button>
-
-            </nav>
-
-
-            <div class="sidebar-bottom">
-
-                <div class="sidebar-tip">
-
-                    <span class="tip-icon">✦</span>
-
-                    <div>
-                        <strong>TanulóBarát AI</strong>
-                        <p>
-                            Kérj segítséget a tanuláshoz.
-                        </p>
-                    </div>
-
-                </div>
-
-
-                <button
-                    id="logoutButton"
-                    class="logout-button"
-                    type="button"
-                >
-                    <span>↪</span>
-                    Kijelentkezés
-                </button>
-
-            </div>
-
-        </aside>
-
-
-
-        <!-- PAGE CONTENT -->
-
-        <main class="main-content">
-
-
-            <!-- =============================================
-                 HOME
-            ============================================== -->
-
-            <section
-                id="page-home"
-                class="page active-page"
-            >
-
-                <div class="page-header">
-
-                    <div>
-
-                        <span class="eyebrow">
-                            TANULÓBARÁT
-                        </span>
-
-                        <h1>
-                            Szia,
-                            <span id="homeName">
-                                Felhasználó
-                            </span>! 👋
-                        </h1>
-
-                        <p>
-                            Készen állsz a mai tanulásra?
-                        </p>
-
-                    </div>
-
-                    <div class="date-card">
-
-                        <span>MA</span>
-
-                        <strong id="currentDate">
-                            -
-                        </strong>
-
-                    </div>
-
-                </div>
-
-
-                <!-- DASHBOARD STATS -->
-
-                <div class="stats-grid">
-
-                    <article class="stat-card">
-
-                        <div class="stat-card-top">
-
-                            <div class="stat-icon purple">
-                                ◫
-                            </div>
-
-                            <span class="stat-trend">
-                                Jegyek
-                            </span>
-
-                        </div>
-
-                        <strong id="averageGrade">
-                            -
-                        </strong>
-
-                        <span>Átlag</span>
-
-                    </article>
-
-
-                    <article class="stat-card">
-
-                        <div class="stat-card-top">
-
-                            <div class="stat-icon blue">
-                                ♧
-                            </div>
-
-                            <span class="stat-trend">
-                                Kapcsolatok
-                            </span>
-
-                        </div>
-
-                        <strong id="friendCount">
-                            0
-                        </strong>
-
-                        <span>Barát</span>
-
-                    </article>
-
-
-                    <article class="stat-card">
-
-                        <div class="stat-card-top">
-
-                            <div class="stat-icon green">
-                                ▤
-                            </div>
-
-                            <span class="stat-trend">
-                                Tananyag
-                            </span>
-
-                        </div>
-
-                        <strong id="materialCount">
-                            0
-                        </strong>
-
-                        <span>Elérhető anyag</span>
-
-                    </article>
-
-
-                    <article class="stat-card">
-
-                        <div class="stat-card-top">
-
-                            <div class="stat-icon orange">
-                                ✦
-                            </div>
-
-                            <span class="stat-trend">
-                                AI
-                            </span>
-
-                        </div>
-
-                        <strong>
-                            AI
-                        </strong>
-
-                        <span>Tanulási asszisztens</span>
-
-                    </article>
-
-                </div>
-
-
-
-                <!-- HOME GRID -->
-
-                <div class="dashboard-grid">
-
-
-                    <!-- QUICK ACTIONS -->
-
-                    <article class="glass-card dashboard-card">
-
-                        <div class="section-heading">
-
-                            <div>
-
-                                <span class="eyebrow">
-                                    GYORS ELÉRÉS
-                                </span>
-
-                                <h2>
-                                    Mit szeretnél csinálni?
-                                </h2>
-
-                            </div>
-
-                        </div>
-
-
-                        <div class="quick-actions">
-
-                            <button
-                                class="quick-action purple-action"
-                                type="button"
-                                data-page="learning"
-                            >
-
-                                <span class="quick-action-icon">
-                                    📚
-                                </span>
-
-                                <span>
-                                    <strong>
-                                        Tanulás
-                                    </strong>
-
-                                    <small>
-                                        Tananyagok és AI
-                                    </small>
-                                </span>
-
-                                <span class="quick-arrow">
-                                    →
-                                </span>
-
-                            </button>
-
-
-                            <button
-                                class="quick-action blue-action"
-                                type="button"
-                                data-page="friends"
-                            >
-
-                                <span class="quick-action-icon">
-                                    👥
-                                </span>
-
-                                <span>
-                                    <strong>
-                                        Barátok
-                                    </strong>
-
-                                    <small>
-                                        Keresés és beszélgetés
-                                    </small>
-                                </span>
-
-                                <span class="quick-arrow">
-                                    →
-                                </span>
-
-                            </button>
-
-
-                            <button
-                                class="quick-action green-action"
-                                type="button"
-                                data-page="grades"
-                            >
-
-                                <span class="quick-action-icon">
-                                    📊
-                                </span>
-
-                                <span>
-                                    <strong>
-                                        Jegyek
-                                    </strong>
-
-                                    <small>
-                                        Tekintsd meg az eredményeid
-                                    </small>
-                                </span>
-
-                                <span class="quick-arrow">
-                                    →
-                                </span>
-
-                            </button>
-
-                        </div>
-
-                    </article>
-
-
-
-                    <!-- AI CARD -->
-
-                    <article class="ai-home-card">
-
-                        <div class="ai-glow"></div>
-
-                        <div class="ai-home-content">
-
-                            <div class="ai-symbol">
-                                🧙
-                            </div>
-
-                            <span class="eyebrow">
-                                TANULÓBARÁT AI
-                            </span>
-
-                            <h2>
-                                Tanulj okosabban.
-                            </h2>
-
-                            <p>
-                                Készíts személyre szabott
-                                tananyagot néhány másodperc alatt.
-                            </p>
-
-                            <button
-                                id="homeAIButton"
-                                class="ai-button"
-                                type="button"
-                            >
-                                <span>AI tananyag készítése</span>
-                                <span>→</span>
-                            </button>
-
-                        </div>
-
-                    </article>
-
-                </div>
-
-
-
-                <!-- RECENT MATERIALS -->
-
-                <article class="glass-card content-card">
-
-                    <div class="section-heading">
-
-                        <div>
-
-                            <span class="eyebrow">
-                                LEGUTÓBBI
-                            </span>
-
-                            <h2>
-                                Tananyagaid
-                            </h2>
-
-                        </div>
-
-                        <button
-                            class="text-button"
-                            type="button"
-                            data-page="learning"
-                        >
-                            Összes →
-                        </button>
-
-                    </div>
-
-
-                    <div
-                        id="homeMaterialList"
-                        class="material-list"
-                    >
-
-                        <div class="empty-state">
-                            <div class="empty-icon">
-                                📚
-                            </div>
-
-                            <h3>
-                                Még nincs tananyagod
-                            </h3>
-
-                            <p>
-                                Készíts egyet a TanulóBarát AI segítségével.
-                            </p>
-
-                        </div>
-
-                    </div>
-
-                </article>
-
-            </section>
-
-
-
-            <!-- =============================================
-                 LEARNING
-            ============================================== -->
-
-            <section
-                id="page-learning"
-                class="page hidden"
-            >
-
-                <div class="page-header">
-
-                    <div>
-
-                        <span class="eyebrow">
-                            TANULÁS
-                        </span>
-
-                        <h1>
-                            Tananyagok 📚
-                        </h1>
-
-                        <p>
-                            Minden tanulnivalód egy helyen.
-                        </p>
-
-                    </div>
-
-                    <button
-                        id="learningAIButton"
-                        class="primary-button"
-                        type="button"
-                    >
-                        🧙 AI tananyag
-                    </button>
-
-                </div>
-
-
-                <div class="learning-toolbar">
-
-                    <div class="search-box">
-
-                        <span>⌕</span>
-
-                        <input
-                            id="materialSearch"
-                            type="search"
-                            placeholder="Tananyag keresése..."
-                        >
-
-                    </div>
-
-
-                    <select
-                        id="materialTypeFilter"
-                        class="modern-select"
-                    >
-                        <option value="all">
-                            Minden típus
-                        </option>
-
-                        <option value="material">
-                            📖 Tananyag
-                        </option>
-
-                        <option value="test">
-                            📝 Teszt
-                        </option>
-
-                        <option value="homework">
-                            📋 Házi feladat
-                        </option>
-                    </select>
-
-                </div>
-
-
-                <div
-                    id="materialList"
-                    class="materials-grid"
-                >
-
-                    <div class="empty-state">
-                        <div class="empty-icon">
-                            📚
-                        </div>
-
-                        <h3>
-                            Nincs még tananyag
-                        </h3>
-
-                        <p>
-                            Készítsd el az első tananyagodat az AI segítségével.
-                        </p>
-
-                        <button
-                            class="primary-button"
-                            type="button"
-                            id="emptyLearningAIButton"
-                        >
-                            🧙 Tananyag készítése
-                        </button>
-                    </div>
-
-                </div>
-
-            </section>
-
-
-
-            <!-- =============================================
-                 GRADES
-            ============================================== -->
-
-            <section
-                id="page-grades"
-                class="page hidden"
-            >
-
-                <div class="page-header">
-
-                    <div>
-
-                        <span class="eyebrow">
-                            TELJESÍTMÉNY
-                        </span>
-
-                        <h1>
-                            Jegyek 📊
-                        </h1>
-
-                        <p>
-                            Kövesd nyomon az eredményeidet.
-                        </p>
-
-                    </div>
-
-                </div>
-
-
-                <div class="grades-overview">
-
-                    <div class="grade-average-card glass-card">
-
-                        <span>
-                            Általános átlag
-                        </span>
-
-                        <strong id="gradesAverage">
-                            -
-                        </strong>
-
-                        <div
-                            id="gradesStars"
-                            class="large-stars"
-                        >
-                            ☆☆☆☆☆
-                        </div>
-
-                    </div>
-
-
-                    <div class="grade-info-card glass-card">
-
-                        <div class="info-icon">
-                            ✦
-                        </div>
-
-                        <div>
-
-                            <strong>
-                                Jó úton haladsz!
-                            </strong>
-
-                            <p>
-                                A jegyeidet folyamatosan frissítjük,
-                                amikor új eredményt kapsz.
-                            </p>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-                <article class="glass-card content-card">
-
-                    <div class="section-heading">
-
-                        <div>
-
-                            <span class="eyebrow">
-                                EREDMÉNYEK
-                            </span>
-
-                            <h2>
-                                Jegyeid
-                            </h2>
-
-                        </div>
-
-                    </div>
-
-
-                    <div
-                        id="gradesList"
-                        class="grades-list"
-                    >
-
-                        <div class="empty-state">
-                            <div class="empty-icon">
-                                📊
-                            </div>
-
-                            <h3>
-                                Még nincs jegyed
-                            </h3>
-
-                            <p>
-                                A barátaid által adott jegyek itt jelennek meg.
-                            </p>
-
-                        </div>
-
-                    </div>
-
-                </article>
-
-            </section>
-
-
-
-            <!-- =============================================
-                 FRIENDS
-            ============================================== -->
-
-            <section
-                id="page-friends"
-                class="page hidden"
-            >
-
-                <div class="page-header">
-
-                    <div>
-
-                        <span class="eyebrow">
-                            KÖZÖSSÉG
-                        </span>
-
-                        <h1>
-                            Barátaid 👥
-                        </h1>
-
-                        <p>
-                            Tanuljatok együtt és segítsétek egymást.
-                        </p>
-
-                    </div>
-
-                </div>
-
-
-                <!-- USER SEARCH -->
-
-                <article class="glass-card search-friends-card">
-
-                    <div class="section-heading">
-
-                        <div>
-
-                            <span class="eyebrow">
-                                ÚJ KAPCSOLAT
-                            </span>
-
-                            <h2>
-                                Keress rá egy tanulóra
-                            </h2>
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="friend-search-row">
-
-                        <div class="search-box large">
-
-                            <span>⌕</span>
-
-                            <input
-                                id="userSearch"
-                                type="search"
-                                placeholder="Név vagy felhasználónév..."
-                            >
-
-                        </div>
-
-                        <button
-                            id="searchUsersButton"
-                            class="primary-button"
-                            type="button"
-                        >
-                            Keresés
-                        </button>
-
-                    </div>
-
-
-                    <div
-                        id="searchResults"
-                        class="search-results"
-                    ></div>
-
-                </article>
-
-
-
-                <!-- FRIEND REQUESTS -->
-
-                <article
-                    id="friendRequestsCard"
-                    class="glass-card content-card"
-                >
-
-                    <div class="section-heading">
-
-                        <div>
-
-                            <span class="eyebrow">
-                                ÉRTESÍTÉSEK
-                            </span>
-
-                            <h2>
-                                Baráti kérések
-                            </h2>
-
-                        </div>
-
-                    </div>
-
-
-                    <div
-                        id="friendRequests"
-                        class="friends-list"
-                    >
-
-                        <div class="empty-inline">
-                            Nincs új baráti kérés.
-                        </div>
-
-                    </div>
-
-                </article>
-
-
-
-                <!-- FRIEND LIST -->
-
-                <article class="glass-card content-card">
-
-                    <div class="section-heading">
-
-                        <div>
-
-                            <span class="eyebrow">
-                                KAPCSOLATAID
-                            </span>
-
-                            <h2>
-                                Barátlista
-                            </h2>
-
-                        </div>
-
-                        <span
-                            id="friendListCount"
-                            class="count-pill"
-                        >
-                            0
-                        </span>
-
-                    </div>
-
-
-                    <div
-                        id="friendsList"
-                        class="friends-list"
-                    >
-
-                        <div class="empty-state compact-empty">
-                            <div class="empty-icon">
-                                👥
-                            </div>
-
-                            <h3>
-                                Még nincsenek barátaid
-                            </h3>
-
-                            <p>
-                                Keress rá valakire fent, és küldj neki baráti kérést.
-                            </p>
-
-                        </div>
-
-                    </div>
-
-                </article>
-
-            </section>
-
-
-
-            <!-- =============================================
-                 PROFILE
-            ============================================== -->
-
-            <section
-                id="page-profile"
-                class="page hidden"
-            >
-
-                <div class="page-header">
-
-                    <div>
-
-                        <span class="eyebrow">
-                            FIÓK
-                        </span>
-
-                        <h1>
-                            Profil 👤
-                        </h1>
-
-                        <p>
-                            A TanulóBarát-fiókod adatai.
-                        </p>
-
-                    </div>
-
-                </div>
-
-
-                <div class="profile-layout">
-
-
-                    <article class="profile-main glass-card">
-
-                        <div class="profile-cover"></div>
-
-                        <div class="profile-main-content">
-
-                            <div class="profile-avatar-row">
-
-                                <div
-                                    id="profileAvatar"
-                                    class="avatar avatar-profile"
-                                >
-                                    ?
-                                </div>
-
-                                <div>
-
-                                    <h2 id="profileName">
-                                        Felhasználó
-                                    </h2>
-
-                                    <p id="profileUsername">
-                                        @username
-                                    </p>
-
-                                </div>
-
-                            </div>
-
-
-                            <div class="profile-details">
-
-                                <div class="profile-detail">
-
-                                    <span>
-                                        E-mail
-                                    </span>
-
-                                    <strong id="profileEmail">
-                                        -
-                                    </strong>
-
-                                </div>
-
-
-                                <div class="profile-detail">
-
-                                    <span>
-                                        Évfolyam
-                                    </span>
-
-                                    <strong id="profileGrade">
-                                        -
-                                    </strong>
-
-                                </div>
-
-
-                                <div class="profile-detail">
-
-                                    <span>
-                                        Tag
-                                    </span>
-
-                                    <strong id="profileJoined">
-                                        -
-                                    </strong>
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                    </article>
-
-
-
-                    <article class="glass-card profile-side-card">
-
-                        <div class="section-heading">
-
-                            <div>
-
-                                <span class="eyebrow">
-                                    TANULÓBARÁT
-                                </span>
-
-                                <h2>
-                                    A profilod
-                                </h2>
-
-                            </div>
-
-                        </div>
-
-                        <p>
-                            A TanulóBarát segítségével
-                            könnyebben tarthatod számon a tanulmányaidat,
-                            barátaidat és eredményeidet.
-                        </p>
-
-                        <div class="profile-stat">
-
-                            <span>
-                                Barátok
-                            </span>
-
-                            <strong id="profileFriendCount">
-                                0
-                            </strong>
-
-                        </div>
-
-                    </article>
-
-                </div>
-
-            </section>
-
-        </main>
-
-    </div>
-
-
-
-    <!-- MOBILE BOTTOM NAV -->
-
-    <nav class="bottom-navigation">
+    <nav>
 
         <button
-            class="bottom-nav-item active"
             type="button"
             data-page="home"
+            class="active"
         >
-            <span>⌂</span>
-            <small>Kezdőlap</small>
+            🏠
+            <span>
+                Főoldal
+            </span>
         </button>
 
 
         <button
-            class="bottom-nav-item"
             type="button"
             data-page="learning"
         >
-            <span>▤</span>
-            <small>Tanulás</small>
+            📚
+            <span>
+                Tanulás
+            </span>
         </button>
 
 
         <button
-            class="bottom-nav-item ai-nav-item"
             type="button"
-            id="bottomAIButton"
+            data-page="grades"
         >
-            <span>🧙</span>
-            <small>AI</small>
+            📝
+            <span>
+                Jegyek
+            </span>
         </button>
 
 
         <button
-            class="bottom-nav-item"
             type="button"
             data-page="friends"
         >
-            <span>♧</span>
-            <small>Barátok</small>
+            👥
+            <span>
+                Barátok
+            </span>
         </button>
 
 
         <button
-            class="bottom-nav-item"
             type="button"
             data-page="profile"
         >
-            <span>◎</span>
-            <small>Profil</small>
+            👤
+            <span>
+                Profil
+            </span>
         </button>
 
     </nav>
+
 
 </section>
 
 
 
-<!-- =========================================================
-     CHAT MODAL
-========================================================= -->
-
-<div
-    id="chatModal"
-    class="modal-overlay hidden"
->
-
-    <div class="modal-window chat-window">
-
-        <div class="modal-header">
-
-            <div class="modal-title-area">
-
-                <div
-                    id="chatAvatar"
-                    class="avatar avatar-medium"
-                >
-                    ?
-                </div>
-
-                <div>
-
-                    <h2 id="chatTitle">
-                        Chat
-                    </h2>
-
-                    <span id="chatStatus">
-                        Online
-                    </span>
-
-                </div>
-
-            </div>
-
-
-            <button
-                class="modal-close"
-                type="button"
-                data-close-modal="chatModal"
-            >
-                ×
-            </button>
-
-        </div>
-
-
-        <div
-            id="chatMessages"
-            class="chat-messages"
-        ></div>
-
-
-        <div class="chat-input-area">
-
-            <button
-                id="chatAIButton"
-                class="chat-ai-button"
-                type="button"
-                title="AI tananyag"
-            >
-                🧙
-            </button>
-
-            <input
-                id="chatInput"
-                type="text"
-                placeholder="Írj egy üzenetet..."
-                autocomplete="off"
-            >
-
-            <button
-                id="sendChatButton"
-                class="send-message-button"
-                type="button"
-                aria-label="Küldés"
-            >
-                ↑
-            </button>
-
-        </div>
-
-    </div>
-
-</div>
-
-
-
-<!-- =========================================================
-     AI MODAL
-========================================================= -->
-
-<div
-    id="aiModal"
-    class="modal-overlay hidden"
->
-
-    <div class="modal-window ai-window">
-
-        <div class="modal-header">
-
-            <div class="modal-title-area">
-
-                <div class="ai-modal-icon">
-                    🧙
-                </div>
-
-                <div>
-
-                    <span class="eyebrow">
-                        TANULÓBARÁT AI
-                    </span>
-
-                    <h2>
-                        AI tananyag
-                    </h2>
-
-                </div>
-
-            </div>
-
-
-            <button
-                class="modal-close"
-                type="button"
-                data-close-modal="aiModal"
-            >
-                ×
-            </button>
-
-        </div>
-
-
-        <div class="modal-body">
-
-            <div class="ai-intro">
-
-                <h3>
-                    Mit szeretnél megtanulni?
-                </h3>
-
-                <p>
-                    Add meg a tantárgyat és a témát,
-                    az AI pedig elkészíti neked az anyagot.
-                </p>
-
-            </div>
-
-
-            <div class="modal-form">
-
-                <div class="input-group">
-
-                    <label for="aiSubject">
-                        Tantárgy
-                    </label>
-
-                    <input
-                        id="aiSubject"
-                        type="text"
-                        placeholder="pl. Matematika"
-                    >
-
-                </div>
-
-
-                <div class="input-group">
-
-                    <label for="aiTopic">
-                        Téma
-                    </label>
-
-                    <textarea
-                        id="aiTopic"
-                        rows="4"
-                        placeholder="pl. Másodfokú egyenletek"
-                    ></textarea>
-
-                </div>
-
-
-                <div class="input-group">
-
-                    <label for="aiType">
-                        Típus
-                    </label>
-
-                    <div class="ai-type-grid">
-
-                        <button
-                            class="ai-type-option active"
-                            type="button"
-                            data-ai-type="material"
-                        >
-                            <span>📖</span>
-                            <strong>Tananyag</strong>
-                            <small>Magyarázat és összefoglaló</small>
-                        </button>
-
-
-                        <button
-                            class="ai-type-option"
-                            type="button"
-                            data-ai-type="test"
-                        >
-                            <span>📝</span>
-                            <strong>Teszt</strong>
-                            <small>Gyakorló kérdések</small>
-                        </button>
-
-
-                        <button
-                            class="ai-type-option"
-                            type="button"
-                            data-ai-type="homework"
-                        >
-                            <span>📋</span>
-                            <strong>Házi feladat</strong>
-                            <small>Gyakorló feladatsor</small>
-                        </button>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-
-            <div
-                id="aiStatus"
-                class="ai-status"
-            ></div>
-
-        </div>
-
-
-        <div class="modal-footer">
-
-            <button
-                class="secondary-button"
-                type="button"
-                data-close-modal="aiModal"
-            >
-                Mégsem
-            </button>
-
-            <button
-                id="generateAIButton"
-                class="ai-button"
-                type="button"
-            >
-                <span>✨ Létrehozás</span>
-                <span>→</span>
-            </button>
-
-        </div>
-
-    </div>
-
-</div>
-
-
-
-<!-- =========================================================
-     AI PREVIEW MODAL
-========================================================= -->
-
-<div
-    id="previewModal"
-    class="modal-overlay hidden"
->
-
-    <div class="modal-window preview-window">
-
-        <div class="modal-header">
-
-            <div>
-
-                <span class="eyebrow">
-                    ELŐNÉZET
-                </span>
-
-                <h2>
-                    Ellenőrizd a tananyagot
-                </h2>
-
-            </div>
-
-            <button
-                class="modal-close"
-                type="button"
-                data-close-modal="previewModal"
-            >
-                ×
-            </button>
-
-        </div>
-
-
-        <div class="preview-content">
-
-            <div class="preview-badge">
-                AI által létrehozva
-            </div>
-
-            <h1 id="previewTitle">
-                Tananyag címe
-            </h1>
-
-            <div
-                id="previewContent"
-                class="formatted-content"
-            ></div>
-
-        </div>
-
-
-        <div class="modal-footer preview-footer">
-
-            <button
-                class="secondary-button"
-                type="button"
-                id="cancelPreviewButton"
-            >
-                ❌ Nem kell
-            </button>
-
-
-            <button
-                id="approveSendButton"
-                class="primary-button"
-                type="button"
-            >
-                <span>✓ Jóváhagyom</span>
-                <span>→</span>
-            </button>
-
-        </div>
-
-    </div>
-
-</div>
-
-
-
-<!-- =========================================================
-     SEND MATERIAL / FRIEND SELECT MODAL
-========================================================= -->
-
-<div
-    id="sendFriendModal"
-    class="modal-overlay hidden"
->
-
-    <div class="modal-window small-window">
-
-        <div class="modal-header">
-
-            <div>
-
-                <span class="eyebrow">
-                    KÜLDÉS
-                </span>
-
-                <h2>
-                    Kinek küldöd?
-                </h2>
-
-            </div>
-
-            <button
-                class="modal-close"
-                type="button"
-                data-close-modal="sendFriendModal"
-            >
-                ×
-            </button>
-
-        </div>
-
-
-        <div
-            id="sendFriendList"
-            class="select-friend-list"
-        ></div>
-
-
-        <div class="modal-footer">
-
-            <button
-                class="secondary-button"
-                type="button"
-                data-close-modal="sendFriendModal"
-            >
-                Mégsem
-            </button>
-
-        </div>
-
-    </div>
-
-</div>
-
-
-
-<!-- =========================================================
-     MATERIAL VIEW MODAL
-========================================================= -->
-
-<div
-    id="materialModal"
-    class="modal-overlay hidden"
->
-
-    <div class="modal-window material-window">
-
-        <div class="modal-header">
-
-            <div>
-
-                <span class="eyebrow">
-                    TANANYAG
-                </span>
-
-                <h2 id="materialTitle">
-                    Tananyag
-                </h2>
-
-            </div>
-
-            <button
-                class="modal-close"
-                type="button"
-                data-close-modal="materialModal"
-            >
-                ×
-            </button>
-
-        </div>
-
-
-        <div
-            id="materialContent"
-            class="formatted-content material-view-content"
-        ></div>
-
-
-        <div class="modal-footer">
-
-            <button
-                class="secondary-button"
-                type="button"
-                data-close-modal="materialModal"
-            >
-                Bezárás
-            </button>
-
-        </div>
-
-    </div>
-
-</div>
-
-
-
-<!-- =========================================================
-     RATING MODAL
-========================================================= -->
-
-<div
-    id="ratingModal"
-    class="modal-overlay hidden"
->
-
-    <div class="modal-window rating-window">
-
-        <div class="modal-header">
-
-            <div>
-
-                <span class="eyebrow">
-                    ÉRTÉKELÉS
-                </span>
-
-                <h2>
-                    Hogyan értékeled?
-                </h2>
-
-            </div>
-
-            <button
-                class="modal-close"
-                type="button"
-                data-close-modal="ratingModal"
-            >
-                ×
-            </button>
-
-        </div>
-
-
-        <div class="rating-body">
-
-            <div
-                id="ratingFriendAvatar"
-                class="avatar avatar-large centered"
-            >
-                ?
-            </div>
-
-            <h3 id="ratingFriendName">
-                Barát
-            </h3>
-
-            <p>
-                Válassz 1–5 csillagot.
-            </p>
-
-
-            <div
-                id="ratingStars"
-                class="rating-stars"
-            >
-
-                <button
-                    type="button"
-                    data-rating="1"
-                    aria-label="1 csillag"
-                >
-                    ★
-                </button>
-
-                <button
-                    type="button"
-                    data-rating="2"
-                    aria-label="2 csillag"
-                >
-                    ★
-                </button>
-
-                <button
-                    type="button"
-                    data-rating="3"
-                    aria-label="3 csillag"
-                >
-                    ★
-                </button>
-
-                <button
-                    type="button"
-                    data-rating="4"
-                    aria-label="4 csillag"
-                >
-                    ★
-                </button>
-
-                <button
-                    type="button"
-                    data-rating="5"
-                    aria-label="5 csillag"
-                >
-                    ★
-                </button>
-
-            </div>
-
-
-            <div
-                id="ratingSelected"
-                class="selection-label"
-            >
-                Válassz értékelést
-            </div>
-
-        </div>
-
-
-        <div class="modal-footer">
-
-            <button
-                id="cancelRatingButton"
-                class="secondary-button"
-                type="button"
-            >
-                Mégsem
-            </button>
-
-            <button
-                id="submitRatingButton"
-                class="primary-button"
-                type="button"
-                disabled
-            >
-                Értékelés elküldése
-            </button>
-
-        </div>
-
-    </div>
-
-</div>
-
-
-
-<!-- =========================================================
-     GRADE MODAL
-========================================================= -->
-
-<div
-    id="gradeModal"
-    class="modal-overlay hidden"
->
-
-    <div class="modal-window grade-window">
-
-        <div class="modal-header">
-
-            <div>
-
-                <span class="eyebrow">
-                    JEGY ADÁSA
-                </span>
-
-                <h2>
-                    Adj jegyet
-                </h2>
-
-            </div>
-
-            <button
-                class="modal-close"
-                type="button"
-                data-close-modal="gradeModal"
-            >
-                ×
-            </button>
-
-        </div>
-
-
-        <div class="grade-body">
-
-            <div class="grade-target">
-
-                <div
-                    id="gradeFriendAvatar"
-                    class="avatar avatar-medium"
-                >
-                    ?
-                </div>
-
-                <div>
-
-                    <strong id="gradeFriendName">
-                        Barát
-                    </strong>
-
-                    <span>
-                        Adj meg egy tantárgyat és jegyet.
-                    </span>
-
-                </div>
-
-            </div>
-
-
-            <div class="input-group">
-
-                <label for="gradeSubject">
-                    Tantárgy
-                </label>
-
-                <input
-                    id="gradeSubject"
-                    type="text"
-                    placeholder="pl. Matematika"
-                >
-
-            </div>
-
-
-            <div class="input-group">
-
-                <label>
-                    Jegy
-                </label>
-
-                <div
-                    id="gradeOptions"
-                    class="grade-options"
-                >
-
-                    <button
-                        type="button"
-                        data-grade="1"
-                    >
-                        <strong>1</strong>
-                        <span>Elégtelen</span>
-                    </button>
-
-                    <button
-                        type="button"
-                        data-grade="2"
-                    >
-                        <strong>2</strong>
-                        <span>Elégséges</span>
-                    </button>
-
-                    <button
-                        type="button"
-                        data-grade="3"
-                    >
-                        <strong>3</strong>
-                        <span>Közepes</span>
-                    </button>
-
-                    <button
-                        type="button"
-                        data-grade="4"
-                    >
-                        <strong>4</strong>
-                        <span>Jó</span>
-                    </button>
-
-                    <button
-                        type="button"
-                        data-grade="5"
-                    >
-                        <strong>5</strong>
-                        <span>Jeles</span>
-                    </button>
-
-                </div>
-
-            </div>
-
-
-            <div
-                id="selectedGrade"
-                class="selection-label"
-            >
-                Válassz jegyet
-            </div>
-
-        </div>
-
-
-        <div class="modal-footer">
-
-            <button
-                id="cancelGradeButton"
-                class="secondary-button"
-                type="button"
-            >
-                Mégsem
-            </button>
-
-            <button
-                id="submitGradeButton"
-                class="primary-button"
-                type="button"
-                disabled
-            >
-                Jegy elküldése
-            </button>
-
-        </div>
-
-    </div>
-
-</div>
-
-
-
-<!-- =========================================================
-     CONFIRMATION MODAL
-========================================================= -->
-
-<div
-    id="confirmModal"
-    class="modal-overlay hidden"
->
-
-    <div class="modal-window small-window confirm-window">
-
-        <div class="confirm-icon">
-            ?
-        </div>
-
-        <h2 id="confirmTitle">
-            Megerősítés
-        </h2>
-
-        <p id="confirmMessage">
-            Biztosan folytatod?
-        </p>
-
-        <div class="modal-footer">
-
-            <button
-                id="confirmCancelButton"
-                class="secondary-button"
-                type="button"
-            >
-                Mégsem
-            </button>
-
-            <button
-                id="confirmOkButton"
-                class="primary-button"
-                type="button"
-            >
-                Folytatás
-            </button>
-
-        </div>
-
-    </div>
-
-</div>
-
-
-
-<!-- =========================================================
-     TOASTS
-========================================================= -->
-
-<div
-    id="toastContainer"
-    class="toast-container"
-    aria-live="polite"
-    aria-atomic="true"
-></div>
-
-
-
-<!-- =========================================================
-     LOADING
-========================================================= -->
-
-<div
-    id="globalLoading"
-    class="global-loading hidden"
->
-
-    <div class="loading-card">
-
-        <div class="loading-spinner"></div>
-
-        <strong id="loadingText">
-            Betöltés...
-        </strong>
-
-        <span>
-            Egy pillanat
-        </span>
-
-    </div>
-
-</div>
-
-
-
-<script src="/app.js"></script>
-
-<!-- ========================================================= -->
-<!-- TANULÓBARÁT - PROFIL SZERKESZTÉS                         -->
-<!-- ========================================================= -->
-
-<style>
-    .tb-profile-edit-button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        margin-top: 18px;
-        padding: 12px 20px;
-        border: 0;
-        border-radius: 12px;
-        background: #2563eb;
-        color: #fff;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: .2s ease;
-    }
-
-    .tb-profile-edit-button:hover {
-        background: #1d4ed8;
-        transform: translateY(-1px);
-    }
-
-    /* MODAL */
-    .tb-profile-overlay {
-        position: fixed;
-        inset: 0;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-        background: rgba(0, 0, 0, .55);
-        z-index: 100000;
-    }
-
-    .tb-profile-overlay.active {
-        display: flex;
-    }
-
-    .tb-profile-modal {
-        width: 100%;
-        max-width: 500px;
-        max-height: 90vh;
-        overflow-y: auto;
-        box-sizing: border-box;
-        padding: 25px;
-        background: #fff;
-        border-radius: 20px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, .3);
-        animation: tbProfileModalOpen .2s ease;
-    }
-
-    @keyframes tbProfileModalOpen {
-        from {
-            opacity: 0;
-            transform: scale(.95) translateY(10px);
-        }
-
-        to {
-            opacity: 1;
-            transform: scale(1) translateY(0);
-        }
-    }
-
-    .tb-profile-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 20px;
-    }
-
-    .tb-profile-header h2 {
-        margin: 0;
-        color: #111827;
-        font-size: 22px;
-    }
-
-    .tb-profile-close {
-        width: 36px;
-        height: 36px;
-        border: 0;
-        border-radius: 50%;
-        background: #f3f4f6;
-        color: #374151;
-        font-size: 22px;
-        cursor: pointer;
-    }
-
-    .tb-profile-close:hover {
-        background: #e5e7eb;
-    }
-
-    /* PROFILKÉP */
-    .tb-profile-picture-section {
-        text-align: center;
-        margin-bottom: 24px;
-    }
-
-    .tb-profile-picture-preview {
-        width: 110px;
-        height: 110px;
-        margin: 0 auto 15px;
-        border-radius: 50%;
-        overflow: hidden;
-        background: #f3f4f6;
-        border: 4px solid #e5e7eb;
-    }
-
-    .tb-profile-picture-preview img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        display: block;
-    }
-
-    .tb-profile-file-label {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 7px;
-        padding: 10px 16px;
-        border-radius: 10px;
-        background: #f3f4f6;
-        color: #374151;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: .2s ease;
-    }
-
-    .tb-profile-file-label:hover {
-        background: #e5e7eb;
-    }
-
-    #tbProfileImageInput {
-        display: none;
-    }
-
-    .tb-profile-file-name {
-        margin-top: 8px;
-        color: #6b7280;
-        font-size: 12px;
-        word-break: break-word;
-    }
-
-    /* MEZŐK */
-    .tb-profile-field {
-        margin-bottom: 16px;
-    }
-
-    .tb-profile-field label {
-        display: block;
-        margin-bottom: 7px;
-        color: #374151;
-        font-size: 14px;
-        font-weight: 600;
-    }
-
-    .tb-profile-field input,
-    .tb-profile-field select {
-        width: 100%;
-        box-sizing: border-box;
-        padding: 12px 13px;
-        border: 1px solid #d1d5db;
-        border-radius: 10px;
-        outline: none;
-        background: #fff;
-        color: #111827;
-        font-size: 14px;
-        transition: .2s ease;
-    }
-
-    .tb-profile-field input:focus,
-    .tb-profile-field select:focus {
-        border-color: #2563eb;
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, .1);
-    }
-
-    .tb-profile-help {
-        margin-top: 6px;
-        color: #6b7280;
-        font-size: 12px;
-        line-height: 1.4;
-    }
-
-    /* ÜZENET */
-    .tb-profile-message {
-        display: none;
-        margin-top: 12px;
-        padding: 11px;
-        border-radius: 9px;
-        text-align: center;
-        font-size: 13px;
-    }
-
-    .tb-profile-message.show {
-        display: block;
-    }
-
-    .tb-profile-message.error {
-        background: #fee2e2;
-        color: #991b1b;
-    }
-
-    .tb-profile-message.success {
-        background: #dcfce7;
-        color: #166534;
-    }
-
-    /* GOMBOK */
-    .tb-profile-actions {
-        display: flex;
-        gap: 10px;
-        margin-top: 22px;
-    }
-
-    .tb-profile-cancel,
-    .tb-profile-save {
-        flex: 1;
-        padding: 12px;
-        border: 0;
-        border-radius: 10px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: .2s ease;
-    }
-
-    .tb-profile-cancel {
-        background: #e5e7eb;
-        color: #374151;
-    }
-
-    .tb-profile-cancel:hover {
-        background: #d1d5db;
-    }
-
-    .tb-profile-save {
-        background: #2563eb;
-        color: #fff;
-    }
-
-    .tb-profile-save:hover {
-        background: #1d4ed8;
-    }
-
-    .tb-profile-save:disabled {
-        opacity: .6;
-        cursor: not-allowed;
-    }
-
-    @media (max-width: 600px) {
-        .tb-profile-modal {
-            padding: 20px;
-            border-radius: 16px;
-        }
-
-        .tb-profile-actions {
-            flex-direction: column;
-        }
-    }
-</style>
-
-
-<!-- ========================================================= -->
-<!-- PROFIL SZERKESZTŐ MODAL                                   -->
-<!-- ========================================================= -->
-
-<div id="tbProfileOverlay" class="tb-profile-overlay">
-
-    <div class="tb-profile-modal">
-
-        <!-- FEJLÉC -->
-        <div class="tb-profile-header">
-
-            <h2>✏️ Profil szerkesztése</h2>
-
-            <button
-                type="button"
-                id="tbProfileClose"
-                class="tb-profile-close">
-                ×
-            </button>
-
-        </div>
-
-
-        <!-- PROFILKÉP -->
-        <div class="tb-profile-picture-section">
-
-            <div class="tb-profile-picture-preview">
-
-                <img
-                    id="tbProfilePreview"
-                    src=""
-                    alt="Profilkép">
-
-            </div>
-
-            <label
-                for="tbProfileImageInput"
-                class="tb-profile-file-label">
-
-                📷 Kép kiválasztása
-
-            </label>
-
-            <input
-                type="file"
-                id="tbProfileImageInput"
-                accept="image/png,image/jpeg,image/webp">
-
-            <div
-                id="tbProfileFileName"
-                class="tb-profile-file-name">
-
-                Nincs kiválasztott kép
-
-            </div>
-
-            <div class="tb-profile-help">
-                PNG, JPG vagy WEBP kép használható.
-            </div>
-
-        </div>
-
-
-        <!-- NÉV -->
-        <div class="tb-profile-field">
-
-            <label for="tbProfileName">
-                👤 Név
-            </label>
-
-            <input
-                type="text"
-                id="tbProfileName"
-                placeholder="Add meg a neved"
-                maxlength="50">
-
-        </div>
-
-
-        <!-- FELHASZNÁLÓNÉV -->
-        <div class="tb-profile-field">
-
-            <label for="tbProfileUsername">
-                @ Felhasználónév
-            </label>
-
-            <input
-                type="text"
-                id="tbProfileUsername"
-                placeholder="felhasznalonev"
-                maxlength="30">
-
-        </div>
-
-
-        <!-- E-MAIL -->
-        <div class="tb-profile-field">
-
-            <label for="tbProfileEmail">
-                ✉️ E-mail cím
-            </label>
-
-            <input
-                type="email"
-                id="tbProfileEmail"
-                placeholder="pelda@email.hu"
-                maxlength="100">
-
-        </div>
-
-
-        <!-- ÉVFOLYAM -->
-        <div class="tb-profile-field">
-
-            <label for="tbProfileGrade">
-                🎓 Évfolyam
-            </label>
-
-            <select id="tbProfileGrade">
-
-                <option value="5">
-                    5. évfolyam
-                </option>
-
-                <option value="6">
-                    6. évfolyam
-                </option>
-
-                <option value="7">
-                    7. évfolyam
-                </option>
-
-                <option value="8">
-                    8. évfolyam
-                </option>
-
-                <option value="9">
-                    9. évfolyam
-                </option>
-
-                <option value="10">
-                    10. évfolyam
-                </option>
-
-                <option value="11">
-                    11. évfolyam
-                </option>
-
-                <option value="12">
-                    12. évfolyam
-                </option>
-
-            </select>
-
-        </div>
-
-
-        <!-- ÚJ JELSZÓ -->
-        <div class="tb-profile-field">
-
-            <label for="tbProfilePassword">
-                🔒 Új jelszó
-            </label>
-
-            <input
-                type="password"
-                id="tbProfilePassword"
-                placeholder="Új jelszó">
-
-            <div class="tb-profile-help">
-                Ha nem szeretnéd megváltoztatni a jelszavadat,
-                hagyd üresen.
-            </div>
-
-        </div>
-
-
-        <!-- ÜZENET -->
-        <div
-            id="tbProfileMessage"
-            class="tb-profile-message">
-        </div>
-
-
-        <!-- GOMBOK -->
-        <div class="tb-profile-actions">
-
-            <button
-                type="button"
-                id="tbProfileCancel"
-                class="tb-profile-cancel">
-
-                Mégse
-
-            </button>
-
-            <button
-                type="button"
-                id="tbProfileSave"
-                class="tb-profile-save">
-
-                💾 Mentés
-
-            </button>
-
-        </div>
-
-    </div>
-
-</div>
-
-
-<!-- ========================================================= -->
-<!-- PROFIL SZERKESZTÉS JAVASCRIPT                             -->
-<!-- ========================================================= -->
+<!-- =====================================================
+     SERVICE WORKER / PWA
+     ===================================================== -->
 
 <script>
 
-(function () {
+    if ("serviceWorker" in navigator) {
 
-    let selectedImage = null;
-
-
-    /* ------------------------------------------------------- */
-    /* ALAPÉRTELMEZETT PROFILKÉP                              */
-    /* ------------------------------------------------------- */
-
-    function defaultAvatar(name) {
-
-        return "https://ui-avatars.com/api/?name=" +
-            encodeURIComponent(name || "Tanuló") +
-            "&background=2563eb&color=ffffff&size=256";
-
-    }
-
-
-    /* ------------------------------------------------------- */
-    /* MODAL MEGNYITÁSA                                        */
-    /* ------------------------------------------------------- */
-
-    async function openProfileEditor() {
-
-        const overlay =
-            document.getElementById("tbProfileOverlay");
-
-        if (!overlay) return;
-
-        overlay.classList.add("active");
-
-        clearMessage();
-
-        selectedImage = null;
-
-        document.getElementById(
-            "tbProfileImageInput"
-        ).value = "";
-
-        document.getElementById(
-            "tbProfileFileName"
-        ).textContent =
-            "Nincs kiválasztott kép";
-
-
-        try {
-
-            const response =
-                await fetch("/api/me");
-
-            const data =
-                await response.json();
-
-            if (!response.ok || !data.user) {
-
-                showMessage(
-                    "Nem sikerült betölteni a profilodat.",
-                    "error"
-                );
-
-                return;
-            }
-
-
-            const user = data.user;
-
-
-            document.getElementById(
-                "tbProfileName"
-            ).value = user.name || "";
-
-
-            document.getElementById(
-                "tbProfileUsername"
-            ).value = user.username || "";
-
-
-            document.getElementById(
-                "tbProfileEmail"
-            ).value = user.email || "";
-
-
-            document.getElementById(
-                "tbProfileGrade"
-            ).value = String(user.grade || "5");
-
-
-            document.getElementById(
-                "tbProfilePassword"
-            ).value = "";
-
-
-            document.getElementById(
-                "tbProfilePreview"
-            ).src =
-                user.avatar ||
-                defaultAvatar(user.name);
-
-
-        } catch (error) {
-
-            console.error(error);
-
-            showMessage(
-                "Hiba történt a profil betöltésekor.",
-                "error"
-            );
-
-        }
-
-    }
-
-
-    /* ------------------------------------------------------- */
-    /* MODAL BEZÁRÁSA                                         */
-    /* ------------------------------------------------------- */
-
-    function closeProfileEditor() {
-
-        const overlay =
-            document.getElementById("tbProfileOverlay");
-
-        if (overlay) {
-            overlay.classList.remove("active");
-        }
-
-    }
-
-
-    /* ------------------------------------------------------- */
-    /* KÉP KIVÁLASZTÁSA                                       */
-    /* ------------------------------------------------------- */
-
-    function handleImageSelect(event) {
-
-        const file =
-            event.target.files[0];
-
-        if (!file) {
-
-            selectedImage = null;
-
-            document.getElementById(
-                "tbProfileFileName"
-            ).textContent =
-                "Nincs kiválasztott kép";
-
-            return;
-        }
-
-
-        /* Csak képet engedünk */
-        if (!file.type.startsWith("image/")) {
-
-            showMessage(
-                "Csak képfájlt választhatsz ki.",
-                "error"
-            );
-
-            event.target.value = "";
-
-            return;
-        }
-
-
-        /* Maximum 5 MB */
-        if (file.size > 5 * 1024 * 1024) {
-
-            showMessage(
-                "A kép maximum 5 MB lehet.",
-                "error"
-            );
-
-            event.target.value = "";
-
-            return;
-        }
-
-
-        selectedImage = file;
-
-
-        document.getElementById(
-            "tbProfileFileName"
-        ).textContent =
-            file.name;
-
-
-        /* Előnézet */
-        const reader =
-            new FileReader();
-
-        reader.onload = function (e) {
-
-            document.getElementById(
-                "tbProfilePreview"
-            ).src =
-                e.target.result;
-
-        };
-
-        reader.readAsDataURL(file);
-
-    }
-
-
-    /* ------------------------------------------------------- */
-    /* PROFIL MENTÉSE                                         */
-    /* ------------------------------------------------------- */
-
-    async function saveProfile() {
-
-        const saveButton =
-            document.getElementById(
-                "tbProfileSave"
-            );
-
-
-        const name =
-            document.getElementById(
-                "tbProfileName"
-            ).value.trim();
-
-
-        const username =
-            document.getElementById(
-                "tbProfileUsername"
-            ).value.trim();
-
-
-        const email =
-            document.getElementById(
-                "tbProfileEmail"
-            ).value.trim();
-
-
-        const grade =
-            document.getElementById(
-                "tbProfileGrade"
-            ).value;
-
-
-        const password =
-            document.getElementById(
-                "tbProfilePassword"
-            ).value;
-
-
-        if (!name) {
-
-            showMessage(
-                "A név nem lehet üres.",
-                "error"
-            );
-
-            return;
-        }
-
-
-        if (!username) {
-
-            showMessage(
-                "A felhasználónév nem lehet üres.",
-                "error"
-            );
-
-            return;
-        }
-
-
-        if (email && !email.includes("@")) {
-
-            showMessage(
-                "Adj meg egy érvényes e-mail címet.",
-                "error"
-            );
-
-            return;
-        }
-
-
-        saveButton.disabled = true;
-
-        saveButton.textContent =
-            "⏳ Mentés...";
-
-
-        try {
-
-            /*
-             * FormData segítségével küldjük a képet
-             * és a többi adatot.
-             */
-
-            const formData =
-                new FormData();
-
-
-            formData.append(
-                "name",
-                name
-            );
-
-
-            formData.append(
-                "username",
-                username
-            );
-
-
-            formData.append(
-                "email",
-                email
-            );
-
-
-            formData.append(
-                "grade",
-                grade
-            );
-
-
-            if (password.trim()) {
-
-                formData.append(
-                    "password",
-                    password
-                );
-
-            }
-
-
-            if (selectedImage) {
-
-                formData.append(
-                    "avatar",
-                    selectedImage
-                );
-
-            }
-
-
-            const response =
-                await fetch(
-                    "/api/profile",
-                    {
-                        method: "PUT",
-                        body: formData
-                    }
-                );
-
-
-            const data =
-                await response.json();
-
-
-            if (!response.ok || !data.success) {
-
-                throw new Error(
-                    data.message ||
-                    "A profil mentése sikertelen."
-                );
-
-            }
-
-
-            showMessage(
-                "✅ Profil sikeresen frissítve!",
-                "success"
-            );
-
-
-            /*
-             * Ha a szerver visszaadja az új felhasználót,
-             * frissítjük a látható adatokat.
-             */
-
-            if (data.user) {
-
-                updateVisibleProfile(
-                    data.user
-                );
-
-            } else {
-
-                updateVisibleProfile({
-                    name: name,
-                    username: username,
-                    email: email,
-                    grade: grade
-                });
-
-            }
-
-
-            setTimeout(
-                closeProfileEditor,
-                800
-            );
-
-
-        } catch (error) {
-
-            console.error(error);
-
-            showMessage(
-                error.message ||
-                "Hiba történt a mentés közben.",
-                "error"
-            );
-
-        } finally {
-
-            saveButton.disabled = false;
-
-            saveButton.textContent =
-                "💾 Mentés";
-
-        }
-
-    }
-
-
-    /* ------------------------------------------------------- */
-    /* OLDALON LÉVŐ PROFILADATOK FRISSÍTÉSE                   */
-    /* ------------------------------------------------------- */
-
-    function updateVisibleProfile(user) {
-
-        const values = {
-
-            "profileName":
-                user.name || "",
-
-            "profileUsername":
-                user.username
-                    ? "@" + user.username
-                    : "",
-
-            "profileEmail":
-                user.email || "",
-
-            "profileGrade":
-                user.grade
-                    ? user.grade + ". évfolyam"
-                    : "",
-
-            "topUserName":
-                user.name || "",
-
-            "sidebarUserName":
-                user.name || "",
-
-            "sidebarUserUsername":
-                user.username
-                    ? "@" + user.username
-                    : ""
-
-        };
-
-
-        Object.keys(values).forEach(
-            function (id) {
-
-                const element =
-                    document.getElementById(id);
-
-                if (element) {
-
-                    element.textContent =
-                        values[id];
-
-                }
-
-            }
-        );
-
-
-        /*
-         * Profilképek frissítése.
-         */
-
-        if (user.avatar) {
-
-            [
-                "profileAvatar",
-                "userAvatar",
-                "sidebarAvatar"
-            ].forEach(
-                function (id) {
-
-                    const image =
-                        document.getElementById(id);
-
-                    if (image) {
-
-                        image.src =
-                            user.avatar;
-
-                    }
-
-                }
-            );
-
-        }
-
-    }
-
-
-    /* ------------------------------------------------------- */
-    /* ÜZENETEK                                                */
-    /* ------------------------------------------------------- */
-
-    function showMessage(text, type) {
-
-        const message =
-            document.getElementById(
-                "tbProfileMessage"
-            );
-
-        if (!message) return;
-
-        message.textContent = text;
-
-        message.className =
-            "tb-profile-message show " +
-            type;
-
-    }
-
-
-    function clearMessage() {
-
-        const message =
-            document.getElementById(
-                "tbProfileMessage"
-            );
-
-        if (!message) return;
-
-        message.textContent = "";
-
-        message.className =
-            "tb-profile-message";
-
-    }
-
-
-    /* ------------------------------------------------------- */
-    /* PROFIL GOMB LÉTREHOZÁSA                                */
-    /* ------------------------------------------------------- */
-
-    function createProfileButton() {
-
-        /*
-         * Ha már van ilyen gomb, nem hozunk létre másikat.
-         */
-
-        if (
-            document.getElementById(
-                "tbProfileEditButton"
-            )
-        ) {
-            return;
-        }
-
-
-        const profilePage =
-            document.getElementById(
-                "page-profile"
-            );
-
-
-        if (!profilePage) return;
-
-
-        const button =
-            document.createElement("button");
-
-
-        button.id =
-            "tbProfileEditButton";
-
-
-        button.className =
-            "tb-profile-edit-button";
-
-
-        button.innerHTML =
-            "✏️ Profil szerkesztése";
-
-
-        button.addEventListener(
-            "click",
-            openProfileEditor
-        );
-
-
-        /*
-         * Próbáljuk a profil kártyájába tenni.
-         */
-
-        const card =
-            profilePage.querySelector(
-                ".card"
-            );
-
-
-        if (card) {
-
-            card.appendChild(button);
-
-        } else {
-
-            profilePage.appendChild(button);
-
-        }
-
-    }
-
-
-    /* ------------------------------------------------------- */
-    /* INDÍTÁS                                                 */
-    /* ------------------------------------------------------- */
-
-    function initProfileEditor() {
-
-        createProfileButton();
-
-
-        const closeButton =
-            document.getElementById(
-                "tbProfileClose"
-            );
-
-
-        const cancelButton =
-            document.getElementById(
-                "tbProfileCancel"
-            );
-
-
-        const saveButton =
-            document.getElementById(
-                "tbProfileSave"
-            );
-
-
-        const imageInput =
-            document.getElementById(
-                "tbProfileImageInput"
-            );
-
-
-        if (closeButton) {
-
-            closeButton.addEventListener(
-                "click",
-                closeProfileEditor
-            );
-
-        }
-
-
-        if (cancelButton) {
-
-            cancelButton.addEventListener(
-                "click",
-                closeProfileEditor
-            );
-
-        }
-
-
-        if (saveButton) {
-
-            saveButton.addEventListener(
-                "click",
-                saveProfile
-            );
-
-        }
-
-
-        if (imageInput) {
-
-            imageInput.addEventListener(
-                "change",
-                handleImageSelect
-            );
-
-        }
-
-
-        /*
-         * Modal háttérre kattintva bezárható.
-         */
-
-        const overlay =
-            document.getElementById(
-                "tbProfileOverlay"
-            );
-
-
-        if (overlay) {
-
-            overlay.addEventListener(
-                "click",
-                function (event) {
-
-                    if (
-                        event.target === overlay
-                    ) {
-
-                        closeProfileEditor();
-
-                    }
-
-                }
-            );
-
-        }
-
-    }
-
-
-    /*
-     * Betöltés után indul.
-     */
-
-    if (
-        document.readyState ===
-        "loading"
-    ) {
-
-        document.addEventListener(
-            "DOMContentLoaded",
-            initProfileEditor
-        );
-
-    } else {
-
-        initProfileEditor();
-
-    }
-
-
-    /*
-     * Az app.js később is betöltheti
-     * a profiloldalt, ezért figyeljük
-     * a DOM változásait.
-     */
-
-    const observer =
-        new MutationObserver(
+        window.addEventListener(
+            "load",
             function () {
 
-                createProfileButton();
+                navigator.serviceWorker
+                    .register("/sw.js")
+                    .then(function (registration) {
+
+                        console.log(
+                            "TanulóBarát PWA elindult:",
+                            registration.scope
+                        );
+
+                    })
+                    .catch(function (error) {
+
+                        console.error(
+                            "PWA hiba:",
+                            error
+                        );
+
+                    });
 
             }
         );
 
+    }
 
-    observer.observe(
-        document.body,
-        {
-            childList: true,
-            subtree: true
-        }
-    );
-
-
-})();
 </script>
 
+
+
+<!-- =====================================================
+     TANULÓBARÁT JAVASCRIPT
+     ===================================================== -->
+
+<script src="/app.js"></script>
+
+
 </body>
+
 </html>
+```
