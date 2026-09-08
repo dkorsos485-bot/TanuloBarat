@@ -5,24 +5,41 @@ const fs = require("fs");
 const path = require("path");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
-app.use(express.json({ limit: "2mb" }));
+const PORT = process.env.PORT || 3000;
+const DATA_FILE = path.join(__dirname, "tanulobarat-data.json");
+
+app.set("trust proxy", 1);
+
+app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true }));
+
+const isProduction =
+    process.env.NODE_ENV === "production" ||
+    !!process.env.RENDER;
 
 app.use(
     session({
-        secret: "tanulobarat-secret-2030",
+        secret:
+            process.env.SESSION_SECRET ||
+            "tanulobarat-secret-2030",
+
         resave: false,
         saveUninitialized: false,
+        proxy: true,
+
         cookie: {
             maxAge: 1000 * 60 * 60 * 24 * 30,
-            httpOnly: true
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: "lax"
         }
     })
 );
 
-const DATA_FILE = path.join(__dirname, "tanulobarat-data.json");
+// ============================================================
+// ADATBÁZIS
+// ============================================================
 
 const emptyDB = {
     users: [],
@@ -31,6 +48,7 @@ const emptyDB = {
     materials: [],
     ratings: [],
     grades: [],
+
     nextIds: {
         user: 1,
         friendship: 1,
@@ -41,45 +59,65 @@ const emptyDB = {
     }
 };
 
+let db;
+
 function loadDB() {
     try {
         if (!fs.existsSync(DATA_FILE)) {
-            fs.writeFileSync(
-                DATA_FILE,
-                JSON.stringify(emptyDB, null, 2),
-                "utf8"
-            );
-
-            return structuredClone(emptyDB);
+            db = JSON.parse(JSON.stringify(emptyDB));
+            saveDB();
+            return;
         }
 
-        const data = JSON.parse(
-            fs.readFileSync(DATA_FILE, "utf8")
-        );
+        const raw = fs.readFileSync(DATA_FILE, "utf8");
+        db = JSON.parse(raw);
 
-        return {
-            ...emptyDB,
-            ...data,
-            nextIds: {
-                ...emptyDB.nextIds,
-                ...(data.nextIds || {})
+        db.users ||= [];
+        db.friendships ||= [];
+        db.messages ||= [];
+        db.materials ||= [];
+        db.ratings ||= [];
+        db.grades ||= [];
+
+        db.nextIds ||= {};
+
+        db.nextIds.user ||= 1;
+        db.nextIds.friendship ||= 1;
+        db.nextIds.message ||= 1;
+        db.nextIds.material ||= 1;
+        db.nextIds.rating ||= 1;
+        db.nextIds.grade ||= 1;
+
+        // Régi tananyagok kompatibilitása
+        db.materials.forEach(material => {
+            if (!Array.isArray(material.sharedWith)) {
+                material.sharedWith = [];
             }
-        };
+        });
     } catch (error) {
         console.error("Adatbázis betöltési hiba:", error);
-        return structuredClone(emptyDB);
+
+        db = JSON.parse(JSON.stringify(emptyDB));
     }
 }
 
-let db = loadDB();
-
 function saveDB() {
-    fs.writeFileSync(
-        DATA_FILE,
-        JSON.stringify(db, null, 2),
-        "utf8"
-    );
+    try {
+        fs.writeFileSync(
+            DATA_FILE,
+            JSON.stringify(db, null, 2),
+            "utf8"
+        );
+    } catch (error) {
+        console.error("Adatbázis mentési hiba:", error);
+    }
 }
+
+loadDB();
+
+// ============================================================
+// SEGÉDFÜGGVÉNYEK
+// ============================================================
 
 function nextId(type) {
     const id = db.nextIds[type] || 1;
@@ -96,12 +134,25 @@ function publicUser(user) {
         username: user.username,
         email: user.email,
         grade: user.grade,
-        avatar: user.avatar || null
+        avatar: user.avatar || null,
+        createdAt: user.createdAt || null
     };
 }
 
-function requireLogin(req, res, next) {
+function getUser(req) {
     if (!req.session.userId) {
+        return null;
+    }
+
+    return db.users.find(
+        user => user.id === Number(req.session.userId)
+    );
+}
+
+function requireLogin(req, res, next) {
+    const user = getUser(req);
+
+    if (!user) {
         return res.status(401).json({
             error: "Nincs bejelentkezve."
         });
@@ -110,28 +161,47 @@ function requireLogin(req, res, next) {
     next();
 }
 
-function getUser(req) {
-    return db.users.find(
-        user => user.id === Number(req.session.userId)
+function areFriends(userA, userB) {
+    return db.friendships.some(
+        friendship =>
+            friendship.status === "accepted" &&
+            (
+                (
+                    friendship.sender === userA &&
+                    friendship.receiver === userB
+                ) ||
+                (
+                    friendship.sender === userB &&
+                    friendship.receiver === userA
+                )
+            )
     );
 }
 
-function areFriends(userA, userB) {
-    return db.friendships.some(friendship =>
-        friendship.status === "accepted" &&
-        (
-            (
-                friendship.sender === userA &&
-                friendship.receiver === userB
-            ) ||
-            (
-                friendship.sender === userB &&
-                friendship.receiver === userA
-            )
+function getFriendIds(userId) {
+    return db.friendships
+        .filter(
+            friendship =>
+                friendship.status === "accepted" &&
+                (
+                    friendship.sender === userId ||
+                    friendship.receiver === userId
+                )
+        )
+        .map(friendship =>
+            friendship.sender === userId
+                ? friendship.receiver
+                : friendship.sender
+        );
+}
+
+function safeUserById(id) {
+    return publicUser(
+        db.users.find(
+            user => user.id === Number(id)
         )
     );
 }
-
 
 // ============================================================
 // REGISZTRÁCIÓ
@@ -160,14 +230,19 @@ app.post("/api/register", async (req, res) => {
         }
 
         const normalizedUsername =
-            String(username).trim().toLowerCase();
+            String(username)
+                .trim()
+                .toLowerCase();
 
         const normalizedEmail =
-            String(email).trim().toLowerCase();
+            String(email)
+                .trim()
+                .toLowerCase();
 
-        if (password.length < 6) {
+        if (String(password).length < 6) {
             return res.status(400).json({
-                error: "A jelszó legalább 6 karakter legyen."
+                error:
+                    "A jelszó legalább 6 karakter legyen."
             });
         }
 
@@ -179,58 +254,88 @@ app.post("/api/register", async (req, res) => {
             gradeNumber > 12
         ) {
             return res.status(400).json({
-                error: "Az évfolyam 5 és 12 között lehet."
+                error:
+                    "Az évfolyam 5 és 12 között lehet."
             });
         }
 
         if (
             db.users.some(
                 user =>
-                    user.username.toLowerCase() ===
+                    String(user.username)
+                        .toLowerCase() ===
                     normalizedUsername
             )
         ) {
             return res.status(400).json({
-                error: "Ez a felhasználónév már foglalt."
+                error:
+                    "Ez a felhasználónév már foglalt."
             });
         }
 
         if (
             db.users.some(
                 user =>
-                    user.email.toLowerCase() ===
+                    String(user.email)
+                        .toLowerCase() ===
                     normalizedEmail
             )
         ) {
             return res.status(400).json({
-                error: "Ez az e-mail cím már használatban van."
+                error:
+                    "Ez az e-mail cím már használatban van."
             });
         }
 
         const hashedPassword =
-            await bcrypt.hash(password, 10);
+            await bcrypt.hash(
+                String(password),
+                10
+            );
 
         const user = {
             id: nextId("user"),
+
             name: String(name).trim(),
+
             username: normalizedUsername,
+
             email: normalizedEmail,
+
             password: hashedPassword,
+
             grade: gradeNumber,
+
             avatar: null,
-            createdAt: new Date().toISOString()
+
+            createdAt:
+                new Date().toISOString()
         };
 
         db.users.push(user);
+
         saveDB();
 
         req.session.userId = user.id;
 
-        res.json({
-            success: true,
-            user: publicUser(user)
-        });
+        req.session.save(error => {
+            if (error) {
+                console.error(
+                    "Session mentési hiba:",
+                    error
+                );
 
+                return res.status(500).json({
+                    error:
+                        "A munkamenet mentése sikertelen."
+                });
+            }
+
+            res.json({
+                success: true,
+                user: publicUser(user)
+            });
+        });
     } catch (error) {
         console.error(error);
 
@@ -239,7 +344,6 @@ app.post("/api/register", async (req, res) => {
         });
     }
 });
-
 
 // ============================================================
 // BEJELENTKEZÉS
@@ -260,11 +364,14 @@ app.post("/api/login", async (req, res) => {
         }
 
         const normalizedUsername =
-            String(username).trim().toLowerCase();
+            String(username)
+                .trim()
+                .toLowerCase();
 
         const user = db.users.find(
             item =>
-                item.username.toLowerCase() ===
+                String(item.username)
+                    .toLowerCase() ===
                 normalizedUsername
         );
 
@@ -277,7 +384,7 @@ app.post("/api/login", async (req, res) => {
 
         const valid =
             await bcrypt.compare(
-                password,
+                String(password),
                 user.password
             );
 
@@ -290,11 +397,24 @@ app.post("/api/login", async (req, res) => {
 
         req.session.userId = user.id;
 
-        res.json({
-            success: true,
-            user: publicUser(user)
-        });
+        req.session.save(error => {
+            if (error) {
+                console.error(
+                    "Session mentési hiba:",
+                    error
+                );
 
+                return res.status(500).json({
+                    error:
+                        "A bejelentkezési munkamenet mentése sikertelen."
+                });
+            }
+
+            res.json({
+                success: true,
+                user: publicUser(user)
+            });
+        });
     } catch (error) {
         console.error(error);
 
@@ -304,230 +424,243 @@ app.post("/api/login", async (req, res) => {
     }
 });
 
-
 // ============================================================
 // KIJELENTKEZÉS
 // ============================================================
 
-app.post("/api/logout", (req, res) => {
-    req.session.destroy(() => {
-        res.json({
-            success: true
-        });
-    });
-});
+app.post(
+    "/api/logout",
+    (req, res) => {
+        req.session.destroy(error => {
+            if (error) {
+                return res.status(500).json({
+                    error:
+                        "A kijelentkezés sikertelen."
+                });
+            }
 
+            res.clearCookie("connect.sid");
+
+            res.json({
+                success: true
+            });
+        });
+    }
+);
 
 // ============================================================
 // AKTUÁLIS FELHASZNÁLÓ
 // ============================================================
 
-app.get("/api/me", (req, res) => {
-    if (!req.session.userId) {
-        return res.json({
-            user: null
-        });
-    }
-
-    const user = getUser(req);
-
-    if (!user) {
-        req.session.destroy(() => {});
-
-        return res.json({
-            user: null
-        });
-    }
-
-    res.json({
-        user: publicUser(user)
-    });
-});
-
-
-// ============================================================
-// PROFIL SZERKESZTÉSE
-// ============================================================
-
-app.put("/api/profile", requireLogin, async (req, res) => {
-    try {
+app.get(
+    "/api/me",
+    (req, res) => {
         const user = getUser(req);
 
-        const {
-            name,
-            username,
-            email,
-            grade,
-            password,
-            avatar
-        } = req.body;
-
-        if (
-            !name ||
-            !username ||
-            !email ||
-            !grade
-        ) {
-            return res.status(400).json({
-                error:
-                    "Minden kötelező mezőt ki kell tölteni."
-            });
-        }
-
-        const newUsername =
-            String(username).trim().toLowerCase();
-
-        const newEmail =
-            String(email).trim().toLowerCase();
-
-        const newGrade =
-            Number(grade);
-
-        if (
-            !Number.isInteger(newGrade) ||
-            newGrade < 5 ||
-            newGrade > 12
-        ) {
-            return res.status(400).json({
-                error:
-                    "Az évfolyam 5 és 12 között lehet."
-            });
-        }
-
-        const usernameTaken =
-            db.users.some(item =>
-                item.id !== user.id &&
-                item.username.toLowerCase() ===
-                    newUsername
-            );
-
-        if (usernameTaken) {
-            return res.status(400).json({
-                error:
-                    "Ez a felhasználónév már foglalt."
-            });
-        }
-
-        const emailTaken =
-            db.users.some(item =>
-                item.id !== user.id &&
-                item.email.toLowerCase() ===
-                    newEmail
-            );
-
-        if (emailTaken) {
-            return res.status(400).json({
-                error:
-                    "Ez az e-mail cím már használatban van."
-            });
-        }
-
-        if (
-            password !== undefined &&
-            password !== ""
-        ) {
-            if (String(password).length < 6) {
-                return res.status(400).json({
-                    error:
-                        "Az új jelszó legalább 6 karakter legyen."
-                });
-            }
-
-            user.password =
-                await bcrypt.hash(
-                    String(password),
-                    10
-                );
-        }
-
-        if (avatar !== undefined) {
-            const avatarString =
-                String(avatar);
-
-            if (
-                avatarString &&
-                !avatarString.startsWith("data:image/")
-            ) {
-                return res.status(400).json({
-                    error:
-                        "Érvénytelen profilkép."
-                });
-            }
-
-            if (
-                avatarString.length > 1000000
-            ) {
-                return res.status(400).json({
-                    error:
-                        "A profilkép túl nagy."
-                });
-            }
-
-            user.avatar =
-                avatarString || null;
-        }
-
-        user.name =
-            String(name).trim();
-
-        user.username =
-            newUsername;
-
-        user.email =
-            newEmail;
-
-        user.grade =
-            newGrade;
-
-        saveDB();
-
         res.json({
-            success: true,
             user: publicUser(user)
         });
-
-    } catch (error) {
-        console.error(
-            "Profil frissítési hiba:",
-            error
-        );
-
-        res.status(500).json({
-            error:
-                "Profil frissítési hiba."
-        });
     }
-});
+);
+
+// ============================================================
+// PROFIL MÓDOSÍTÁSA
+// ============================================================
+
+app.put(
+    "/api/profile",
+    requireLogin,
+    async (req, res) => {
+        try {
+            const user = getUser(req);
+
+            const {
+                name,
+                username,
+                email,
+                grade,
+                password,
+                avatar
+            } = req.body;
+
+            if (
+                !name ||
+                !username ||
+                !email ||
+                !grade
+            ) {
+                return res.status(400).json({
+                    error:
+                        "Minden mezőt ki kell tölteni."
+                });
+            }
+
+            const normalizedUsername =
+                String(username)
+                    .trim()
+                    .toLowerCase();
+
+            const normalizedEmail =
+                String(email)
+                    .trim()
+                    .toLowerCase();
+
+            const gradeNumber = Number(grade);
+
+            if (
+                !Number.isInteger(gradeNumber) ||
+                gradeNumber < 5 ||
+                gradeNumber > 12
+            ) {
+                return res.status(400).json({
+                    error:
+                        "Az évfolyam 5 és 12 között lehet."
+                });
+            }
+
+            const usernameUsed =
+                db.users.some(
+                    other =>
+                        other.id !== user.id &&
+                        String(other.username)
+                            .toLowerCase() ===
+                        normalizedUsername
+                );
+
+            if (usernameUsed) {
+                return res.status(400).json({
+                    error:
+                        "Ez a felhasználónév már foglalt."
+                });
+            }
+
+            const emailUsed =
+                db.users.some(
+                    other =>
+                        other.id !== user.id &&
+                        String(other.email)
+                            .toLowerCase() ===
+                        normalizedEmail
+                );
+
+            if (emailUsed) {
+                return res.status(400).json({
+                    error:
+                        "Ez az e-mail cím már használatban van."
+                });
+            }
+
+            user.name = String(name).trim();
+
+            user.username =
+                normalizedUsername;
+
+            user.email =
+                normalizedEmail;
+
+            user.grade =
+                gradeNumber;
+
+            if (typeof avatar === "string") {
+                if (
+                    avatar &&
+                    !avatar.startsWith("data:image/")
+                ) {
+                    return res.status(400).json({
+                        error:
+                            "Érvénytelen profilkép."
+                    });
+                }
+
+                if (
+                    avatar.length >
+                    1000000
+                ) {
+                    return res.status(400).json({
+                        error:
+                            "A profilkép túl nagy."
+                    });
+                }
+
+                user.avatar =
+                    avatar || null;
+            }
+
+            if (password) {
+                if (
+                    String(password).length < 6
+                ) {
+                    return res.status(400).json({
+                        error:
+                            "Az új jelszó legalább 6 karakter legyen."
+                    });
+                }
+
+                user.password =
+                    await bcrypt.hash(
+                        String(password),
+                        10
+                    );
+            }
+
+            saveDB();
+
+            res.json({
+                success: true,
+                user: publicUser(user)
+            });
+        } catch (error) {
+            console.error(error);
+
+            res.status(500).json({
+                error:
+                    "A profil mentése sikertelen."
+            });
+        }
+    }
+);
+
 // ============================================================
 // FELHASZNÁLÓK KERESÉSE
 // ============================================================
 
-app.get("/api/users", requireLogin, (req, res) => {
-    const q = String(req.query.q || "")
-        .trim()
-        .toLowerCase();
+app.get(
+    "/api/users",
+    requireLogin,
+    (req, res) => {
+        const currentUser = getUser(req);
 
-    const currentUser = getUser(req);
+        const q =
+            String(req.query.q || "")
+                .trim()
+                .toLowerCase();
 
-    let users = db.users.filter(
-        user => user.id !== currentUser.id
-    );
-
-    if (q) {
-        users = users.filter(user =>
-            user.name.toLowerCase().includes(q) ||
-            user.username.toLowerCase().includes(q)
+        let users = db.users.filter(
+            user => user.id !== currentUser.id
         );
+
+        if (q) {
+            users = users.filter(
+                user =>
+                    String(user.name)
+                        .toLowerCase()
+                        .includes(q) ||
+                    String(user.username)
+                        .toLowerCase()
+                        .includes(q)
+            );
+        }
+
+        res.json({
+            users: users
+                .slice(0, 50)
+                .map(publicUser)
+        });
     }
-
-    res.json({
-        users: users.map(publicUser)
-    });
-});
-
+);
 
 // ============================================================
-// BARÁTI KÉRÉS KÜLDÉSE
+// BARÁTKÉRÉS
 // ============================================================
 
 app.post(
@@ -535,69 +668,93 @@ app.post(
     requireLogin,
     (req, res) => {
         const currentUser = getUser(req);
-        const userId = Number(req.body.userId);
 
-        if (!userId) {
-            return res.status(400).json({
-                error: "Hiányzó felhasználó."
-            });
-        }
+        const targetId =
+            Number(req.body.userId);
 
-        if (userId === currentUser.id) {
+        if (!targetId) {
             return res.status(400).json({
                 error:
-                    "Saját magadnak nem küldhetsz baráti kérést."
+                    "Nincs megadva felhasználó."
             });
         }
 
-        const targetUser = db.users.find(
-            user => user.id === userId
-        );
+        if (
+            targetId === currentUser.id
+        ) {
+            return res.status(400).json({
+                error:
+                    "Saját magadat nem jelölheted."
+            });
+        }
 
-        if (!targetUser) {
+        const target =
+            db.users.find(
+                user =>
+                    user.id === targetId
+            );
+
+        if (!target) {
             return res.status(404).json({
                 error:
                     "A felhasználó nem található."
             });
         }
 
-        const existing = db.friendships.find(
-            friendship =>
-                (
-                    friendship.sender === currentUser.id &&
-                    friendship.receiver === userId
-                ) ||
-                (
-                    friendship.sender === userId &&
-                    friendship.receiver === currentUser.id
-                )
-        );
-
-        if (existing) {
-            if (existing.status === "accepted") {
-                return res.status(400).json({
-                    error:
-                        "Már barátok vagytok."
-                });
-            }
-
-            if (existing.status === "pending") {
-                return res.status(400).json({
-                    error:
-                        "Már van függőben lévő baráti kérés."
-                });
-            }
+        if (
+            areFriends(
+                currentUser.id,
+                targetId
+            )
+        ) {
+            return res.status(400).json({
+                error:
+                    "Már barátok vagytok."
+            });
         }
 
-        const friendship = {
+        const existing =
+            db.friendships.find(
+                friendship =>
+                    (
+                        friendship.sender ===
+                            currentUser.id &&
+                        friendship.receiver ===
+                            targetId
+                    ) ||
+                    (
+                        friendship.sender ===
+                            targetId &&
+                        friendship.receiver ===
+                            currentUser.id
+                    )
+            );
+
+        if (existing) {
+            if (
+                existing.status ===
+                "pending"
+            ) {
+                return res.status(400).json({
+                    error:
+                        "Már van függőben lévő barátkérelem."
+                });
+            }
+
+            return res.status(400).json({
+                error:
+                    "Már létezik kapcsolat."
+            });
+        }
+
+        db.friendships.push({
             id: nextId("friendship"),
             sender: currentUser.id,
-            receiver: userId,
+            receiver: targetId,
             status: "pending",
             date: new Date().toISOString()
-        };
+        });
 
-        db.friendships.push(friendship);
         saveDB();
 
         res.json({
@@ -606,9 +763,8 @@ app.post(
     }
 );
 
-
 // ============================================================
-// BARÁTI KÉRÉSEK
+// BARÁTKÉRELMEK
 // ============================================================
 
 app.get(
@@ -617,34 +773,37 @@ app.get(
     (req, res) => {
         const currentUser = getUser(req);
 
-        const requests = db.friendships
-            .filter(
-                friendship =>
-                    friendship.receiver ===
-                        currentUser.id &&
-                    friendship.status ===
-                        "pending"
-            )
-            .map(friendship => {
-                const sender =
-                    db.users.find(
-                        user =>
-                            user.id ===
-                            friendship.sender
-                    );
+        const requests =
+            db.friendships
+                .filter(
+                    friendship =>
+                        friendship.receiver ===
+                            currentUser.id &&
+                        friendship.status ===
+                            "pending"
+                )
+                .map(friendship => {
+                    const sender =
+                        db.users.find(
+                            user =>
+                                user.id ===
+                                friendship.sender
+                        );
 
-                if (!sender) return null;
+                    if (!sender) {
+                        return null;
+                    }
 
-                return {
-                    id: sender.id,
-                    name: sender.name,
-                    username: sender.username,
-                    avatar: sender.avatar || null,
-                    friendshipId:
-                        friendship.id
-                };
-            })
-            .filter(Boolean);
+                    return {
+                        id: sender.id,
+                        name: sender.name,
+                        username:
+                            sender.username,
+                        friendshipId:
+                            friendship.id
+                    };
+                })
+                .filter(Boolean);
 
         res.json({
             requests
@@ -652,9 +811,8 @@ app.get(
     }
 );
 
-
 // ============================================================
-// BARÁTI KÉRÉS ELFOGADÁSA
+// BARÁTKÉRÉS ELFOGADÁSA
 // ============================================================
 
 app.post(
@@ -662,26 +820,31 @@ app.post(
     requireLogin,
     (req, res) => {
         const currentUser = getUser(req);
+
         const senderId =
             Number(req.params.id);
 
         const friendship =
             db.friendships.find(
                 item =>
-                    item.sender === senderId &&
                     item.receiver ===
                         currentUser.id &&
-                    item.status === "pending"
+                    item.sender ===
+                        senderId &&
+                    item.status ===
+                        "pending"
             );
 
         if (!friendship) {
             return res.status(404).json({
                 error:
-                    "A baráti kérés nem található."
+                    "A barátkérelem nem található."
             });
         }
 
-        friendship.status = "accepted";
+        friendship.status =
+            "accepted";
+
         friendship.date =
             new Date().toISOString();
 
@@ -693,9 +856,8 @@ app.post(
     }
 );
 
-
 // ============================================================
-// BARÁTI KÉRÉS ELUTASÍTÁSA
+// BARÁTKÉRÉS ELUTASÍTÁSA
 // ============================================================
 
 app.post(
@@ -703,26 +865,32 @@ app.post(
     requireLogin,
     (req, res) => {
         const currentUser = getUser(req);
+
         const senderId =
             Number(req.params.id);
 
         const index =
             db.friendships.findIndex(
                 item =>
-                    item.sender === senderId &&
                     item.receiver ===
                         currentUser.id &&
-                    item.status === "pending"
+                    item.sender ===
+                        senderId &&
+                    item.status ===
+                        "pending"
             );
 
         if (index === -1) {
             return res.status(404).json({
                 error:
-                    "A baráti kérés nem található."
+                    "A barátkérelem nem található."
             });
         }
 
-        db.friendships.splice(index, 1);
+        db.friendships.splice(
+            index,
+            1
+        );
 
         saveDB();
 
@@ -732,9 +900,8 @@ app.post(
     }
 );
 
-
 // ============================================================
-// BARÁTOK LISTÁJA
+// BARÁTOK
 // ============================================================
 
 app.get(
@@ -743,41 +910,24 @@ app.get(
     (req, res) => {
         const currentUser = getUser(req);
 
-        const friendships =
-            db.friendships.filter(
-                friendship =>
-                    friendship.status ===
-                        "accepted" &&
-                    (
-                        friendship.sender ===
-                            currentUser.id ||
-                        friendship.receiver ===
-                            currentUser.id
+        const friends =
+            getFriendIds(
+                currentUser.id
+            )
+                .map(id =>
+                    db.users.find(
+                        user =>
+                            user.id === id
                     )
-            );
-
-        const friends = friendships
-            .map(friendship => {
-                const friendId =
-                    friendship.sender ===
-                        currentUser.id
-                        ? friendship.receiver
-                        : friendship.sender;
-
-                return db.users.find(
-                    user =>
-                        user.id === friendId
-                );
-            })
-            .filter(Boolean)
-            .map(publicUser);
+                )
+                .filter(Boolean)
+                .map(publicUser);
 
         res.json({
             friends
         });
     }
 );
-
 
 // ============================================================
 // ÜZENETEK LEKÉRÉSE
@@ -788,6 +938,7 @@ app.get(
     requireLogin,
     (req, res) => {
         const currentUser = getUser(req);
+
         const friendId =
             Number(req.params.friendId);
 
@@ -804,28 +955,50 @@ app.get(
         }
 
         const messages =
-            db.messages.filter(
-                message =>
-                    (
-                        message.sender ===
-                            currentUser.id &&
-                        message.receiver ===
-                            friendId
-                    ) ||
-                    (
-                        message.sender ===
-                            friendId &&
-                        message.receiver ===
-                            currentUser.id
-                    )
-            );
+            db.messages
+                .filter(
+                    message =>
+                        (
+                            message.sender ===
+                                currentUser.id &&
+                            message.receiver ===
+                                friendId
+                        ) ||
+                        (
+                            message.sender ===
+                                friendId &&
+                            message.receiver ===
+                                currentUser.id
+                        )
+                )
+                .sort(
+                    (a, b) =>
+                        new Date(a.date) -
+                        new Date(b.date)
+                )
+                .map(message => ({
+                    id: message.id,
+                    sender:
+                        message.sender,
+                    receiver:
+                        message.receiver,
+                    message:
+                        message.message,
+                    date:
+                        message.date,
+                    type:
+                        message.type ||
+                        "text",
+                    materialId:
+                        message.materialId ||
+                        null
+                }));
 
         res.json({
             messages
         });
     }
 );
-
 
 // ============================================================
 // ÜZENET KÜLDÉSE
@@ -836,14 +1009,32 @@ app.post(
     requireLogin,
     (req, res) => {
         const currentUser = getUser(req);
+
         const friendId =
             Number(req.params.friendId);
 
-        const {
-            message,
-            type,
-            materialId
-        } = req.body;
+        const message =
+            String(
+                req.body.message || ""
+            ).trim();
+
+        const type =
+            req.body.type ||
+            "text";
+
+        const materialId =
+            req.body.materialId
+                ? Number(
+                    req.body.materialId
+                )
+                : null;
+
+        if (!message) {
+            return res.status(400).json({
+                error:
+                    "Üres üzenet nem küldhető."
+            });
+        }
 
         if (
             !areFriends(
@@ -853,62 +1044,225 @@ app.post(
         ) {
             return res.status(403).json({
                 error:
-                    "Csak barátoknak küldhetsz üzenetet."
+                    "Csak barátnak küldhetsz üzenetet."
             });
         }
 
-        if (
-            !message ||
-            !String(message).trim()
-        ) {
-            return res.status(400).json({
-                error:
-                    "Az üzenet nem lehet üres."
-            });
-        }
-
-        const target =
+        const friend =
             db.users.find(
                 user =>
                     user.id === friendId
             );
 
-        if (!target) {
+        if (!friend) {
             return res.status(404).json({
                 error:
-                    "A felhasználó nem található."
+                    "A barát nem található."
             });
+        }
+
+        // Ha tananyag üzenetet küldünk,
+        // ellenőrizzük, hogy létezik-e
+        // és a küldő tulajdona-e.
+        if (materialId) {
+            const material =
+                db.materials.find(
+                    item =>
+                        item.id ===
+                        materialId
+                );
+
+            if (!material) {
+                return res.status(404).json({
+                    error:
+                        "A tananyag nem található."
+                });
+            }
+
+            if (
+                material.creator !==
+                currentUser.id
+            ) {
+                return res.status(403).json({
+                    error:
+                        "Ezt a tananyagot nem küldheted el."
+                });
+            }
+
+            if (
+                !Array.isArray(
+                    material.sharedWith
+                )
+            ) {
+                material.sharedWith = [];
+            }
+
+            if (
+                !material.sharedWith.includes(
+                    friendId
+                )
+            ) {
+                material.sharedWith.push(
+                    friendId
+                );
+            }
         }
 
         const newMessage = {
             id: nextId("message"),
-            sender: currentUser.id,
-            receiver: friendId,
-            message:
-                String(message).trim(),
+
+            sender:
+                currentUser.id,
+
+            receiver:
+                friendId,
+
+            message,
+
             date:
                 new Date().toISOString(),
-            type: type || "text",
-            materialId:
-                materialId
-                    ? Number(materialId)
-                    : null
+
+            type,
+
+            materialId
         };
 
-        db.messages.push(newMessage);
+        db.messages.push(
+            newMessage
+        );
 
         saveDB();
 
         res.json({
             success: true,
-            message: newMessage
+            message:
+                newMessage
         });
     }
 );
 
+// ============================================================
+// AI TANANYAG GENERÁLÁS
+// ============================================================
+
+app.post(
+    "/api/ai/generate",
+    requireLogin,
+    async (req, res) => {
+        const subject =
+            String(
+                req.body.subject || ""
+            ).trim();
+
+        const topic =
+            String(
+                req.body.topic || ""
+            ).trim();
+
+        const type =
+            req.body.type ||
+            "material";
+
+        if (!subject || !topic) {
+            return res.status(400).json({
+                error:
+                    "A tantárgy és a téma kötelező."
+            });
+        }
+
+        let title = "";
+        let explanation = "";
+        let important = "";
+        let examples = "";
+        let summary = "";
+
+        if (type === "test") {
+            title =
+                `${subject} – ${topic} teszt`;
+
+            explanation =
+                `Teszt a(z) ${topic} témakörből ${subject} tantárgyból.`;
+
+            important =
+                "• Fogalmak\n• Fontos összefüggések\n• Alapvető szabályok";
+
+            examples =
+                "1. Mit tudsz a témáról?\n\n" +
+                "2. Nevezz meg három fontos fogalmat!\n\n" +
+                "3. Magyarázd el röviden a témakört!";
+
+            summary =
+                "A teszt célja a témakör legfontosabb részeinek ellenőrzése.";
+        } else if (type === "homework") {
+            title =
+                `${subject} – ${topic} házi feladat`;
+
+            explanation =
+                `Házi feladat a(z) ${topic} témakör gyakorlására.`;
+
+            important =
+                "• Tanuld meg a fő fogalmakat\n" +
+                "• Ismételd át a szabályokat\n" +
+                "• Gyakorold a példákat";
+
+            examples =
+                "Feladat 1: Foglald össze a témát!\n\n" +
+                "Feladat 2: Írj három példát!\n\n" +
+                "Feladat 3: Magyarázd el saját szavaiddal!";
+
+            summary =
+                "A házi feladat célja az önálló gyakorlás.";
+        } else {
+            title =
+                `${subject} – ${topic}`;
+
+            explanation =
+                `${topic} a(z) ${subject} egyik fontos témaköre.\n\n` +
+                "A témakör megértéséhez érdemes először " +
+                "a legfontosabb fogalmakat megtanulni, " +
+                "majd példákon keresztül gyakorolni.";
+
+            important =
+                "• Alapfogalmak\n" +
+                "• Fontos szabályok\n" +
+                "• Összefüggések\n" +
+                "• Gyakorlati példák";
+
+            examples =
+                "Példa 1: Gondold végig, hogyan működik a témakör!\n\n" +
+                "Példa 2: Keress egy hétköznapi példát!\n\n" +
+                "Példa 3: Magyarázd el saját szavaiddal!";
+
+            summary =
+                `Összefoglalva: a(z) ${topic} témakör ` +
+                "legfontosabb részeit érdemes megtanulni " +
+                "és példák segítségével begyakorolni.";
+        }
+
+        res.json({
+            success: true,
+            type,
+            subject,
+            topic,
+            title,
+            explanation,
+            important,
+            examples,
+            summary,
+            content:
+                explanation +
+                "\n\n" +
+                important +
+                "\n\n" +
+                examples +
+                "\n\n" +
+                summary
+        });
+    }
+);
 
 // ============================================================
-// TANANYAG LÉTREHOZÁSA
+// TANANYAG LÉTREHOZÁSA / KÜLDÉSE
 // ============================================================
 
 app.post(
@@ -925,62 +1279,100 @@ app.post(
             friendId
         } = req.body;
 
-        if (
-            !subject ||
-            !title ||
-            !content
-        ) {
+        if (!title || !content) {
             return res.status(400).json({
                 error:
-                    "A tantárgy, cím és tartalom kötelező."
+                    "Hiányzik a tananyag tartalma."
             });
         }
 
-        const material = {
-            id: nextId("material"),
-            creator: currentUser.id,
-            subject:
-                String(subject).trim(),
-            title:
-                String(title).trim(),
-            content:
-                String(content),
-            type:
-                type || "material",
-            date:
-                new Date().toISOString()
-        };
-
-        db.materials.push(material);
+        let targetFriendId = null;
 
         if (friendId) {
-            const targetId =
+            targetFriendId =
                 Number(friendId);
 
             if (
-                areFriends(
+                !areFriends(
                     currentUser.id,
-                    targetId
+                    targetFriendId
                 )
             ) {
-                db.messages.push({
-                    id: nextId("message"),
-                    sender:
-                        currentUser.id,
-                    receiver:
-                        targetId,
-                    message:
-                        `📚 Új tananyag: ${material.title}`,
-                    date:
-                        new Date().toISOString(),
-                    type: "material",
-                    materialId:
-                        material.id
+                return res.status(403).json({
+                    error:
+                        "A tananyagot csak barátnak küldheted."
                 });
             }
         }
 
+        const material = {
+            id: nextId("material"),
+
+            creator:
+                currentUser.id,
+
+            subject:
+                String(
+                    subject || ""
+                ),
+
+            title:
+                String(title),
+
+            content:
+                String(content),
+
+            type:
+                type ||
+                "material",
+
+            date:
+                new Date().toISOString(),
+
+            sharedWith:
+                targetFriendId
+                    ? [targetFriendId]
+                    : []
+        };
+
+        db.materials.push(
+            material
+        );
+
         saveDB();
+
+        // Ha barátnak küldjük,
+        // automatikusan létrehozunk
+        // egy chat-üzenetet is.
+        if (targetFriendId) {
+            const materialMessage = {
+                id: nextId("message"),
+
+                sender:
+                    currentUser.id,
+
+                receiver:
+                    targetFriendId,
+
+                message:
+                    `📚 Tananyagot küldött: ${material.title}`,
+
+                date:
+                    new Date().toISOString(),
+
+                type:
+                    "material",
+
+                materialId:
+                    material.id
+            };
+
+            db.messages.push(
+                materialMessage
+            );
+
+            saveDB();
+        }
 
         res.json({
             success: true,
@@ -988,7 +1380,6 @@ app.post(
         });
     }
 );
-
 
 // ============================================================
 // SAJÁT TANANYAGOK
@@ -1001,11 +1392,25 @@ app.get(
         const currentUser = getUser(req);
 
         const materials =
-            db.materials.filter(
-                material =>
-                    material.creator ===
-                    currentUser.id
-            );
+            db.materials
+                .filter(
+                    material =>
+                        material.creator ===
+                        currentUser.id ||
+                        (
+                            Array.isArray(
+                                material.sharedWith
+                            ) &&
+                            material.sharedWith.includes(
+                                currentUser.id
+                            )
+                        )
+                )
+                .sort(
+                    (a, b) =>
+                        new Date(b.date) -
+                        new Date(a.date)
+                );
 
         res.json({
             materials
@@ -1013,9 +1418,8 @@ app.get(
     }
 );
 
-
 // ============================================================
-// EGY TANANYAG LEKÉRÉSE
+// EGY TANANYAG MEGNYITÁSA
 // ============================================================
 
 app.get(
@@ -1023,13 +1427,14 @@ app.get(
     requireLogin,
     (req, res) => {
         const currentUser = getUser(req);
-        const materialId =
+
+        const id =
             Number(req.params.id);
 
         const material =
             db.materials.find(
                 item =>
-                    item.id === materialId
+                    item.id === id
             );
 
         if (!material) {
@@ -1040,9 +1445,21 @@ app.get(
         }
 
         if (
-            material.creator !==
-            currentUser.id
+            !Array.isArray(
+                material.sharedWith
+            )
         ) {
+            material.sharedWith = [];
+        }
+
+        const allowed =
+            material.creator ===
+                currentUser.id ||
+            material.sharedWith.includes(
+                currentUser.id
+            );
+
+        if (!allowed) {
             return res.status(403).json({
                 error:
                     "Nincs hozzáférésed ehhez a tananyaghoz."
@@ -1054,136 +1471,9 @@ app.get(
         });
     }
 );
-// ============================================================
-// AI TANANYAG GENERÁLÁS
-// ============================================================
-
-app.post(
-    "/api/ai/generate",
-    requireLogin,
-    (req, res) => {
-        const {
-            subject,
-            topic,
-            type
-        } = req.body;
-
-        if (!subject || !topic) {
-            return res.status(400).json({
-                error:
-                    "A tantárgy és a téma megadása kötelező."
-            });
-        }
-
-        const subjectText =
-            String(subject).trim();
-
-        const topicText =
-            String(topic).trim();
-
-        let title = "";
-
-        if (type === "test") {
-            title =
-                `${subjectText} – ${topicText} dolgozat`;
-        } else if (type === "homework") {
-            title =
-                `${subjectText} – ${topicText} házi feladat`;
-        } else {
-            title =
-                `${subjectText} – ${topicText}`;
-        }
-
-        const explanation =
-            `A(z) ${topicText} a(z) ${subjectText} ` +
-            `tantárgy egyik fontos témaköre. ` +
-            `Tanuláskor érdemes megérteni az alapfogalmakat, ` +
-            `az összefüggéseket és a gyakorlati példákat.`;
-
-        const important = [
-            `A ${topicText} alapfogalmai`,
-            "A legfontosabb összefüggések",
-            "A témához tartozó kulcsfogalmak",
-            "Gyakorlati alkalmazás",
-            "Érdemes példákon keresztül gyakorolni"
-        ];
-
-        const examples = [
-            `1. példa: Gondold át, hogyan kapcsolódik ` +
-            `a ${topicText} a korábban tanultakhoz.`,
-            `2. példa: Foglald össze saját szavaiddal ` +
-            `a ${topicText} lényegét.`,
-            `3. példa: Készíts egy rövid gyakorlófeladatot ` +
-            `a témához.`
-        ];
-
-        const summary =
-            `Összefoglalva: a(z) ${topicText} ` +
-            `megértéséhez először az alapfogalmakat ` +
-            `érdemes megtanulni, majd példákon keresztül ` +
-            `gyakorolni az alkalmazásukat.`;
-
-        let content = "";
-
-        if (type === "test") {
-            content =
-                `📝 DOLGOZAT\n\n` +
-                `Tantárgy: ${subjectText}\n` +
-                `Téma: ${topicText}\n\n` +
-                `1. Írd le a téma legfontosabb fogalmait!\n\n` +
-                `2. Magyarázd el a témához kapcsolódó ` +
-                `legfontosabb összefüggéseket!\n\n` +
-                `3. Oldj meg egy, a témához kapcsolódó ` +
-                `gyakorlati feladatot!\n\n` +
-                `4. Foglald össze röviden, mit tanultál!`;
-        } else if (type === "homework") {
-            content =
-                `📚 HÁZI FELADAT\n\n` +
-                `Tantárgy: ${subjectText}\n` +
-                `Téma: ${topicText}\n\n` +
-                `Feladat 1:\n` +
-                `Fogalmazd meg saját szavaiddal a témát.\n\n` +
-                `Feladat 2:\n` +
-                `Írd ki a legfontosabb fogalmakat.\n\n` +
-                `Feladat 3:\n` +
-                `Oldj meg egy gyakorlati példát.\n\n` +
-                `Feladat 4:\n` +
-                `Készíts rövid összefoglalót.`;
-        } else {
-            content =
-                `📖 TANANYAG\n\n` +
-                `Cím: ${title}\n\n` +
-                `MAGYARÁZAT\n` +
-                `${explanation}\n\n` +
-                `FONTOS FOGALMAK\n` +
-                `${important
-                    .map(item => `• ${item}`)
-                    .join("\n")}\n\n` +
-                `PÉLDÁK\n` +
-                `${examples.join("\n\n")}\n\n` +
-                `ÖSSZEFOGLALÓ\n` +
-                `${summary}`;
-        }
-
-        res.json({
-            success: true,
-            type:
-                type || "material",
-            subject: subjectText,
-            topic: topicText,
-            title,
-            explanation,
-            important,
-            examples,
-            summary,
-            content
-        });
-    }
-);
-
 
 // ============================================================
-// ÉRTÉKELÉS ADÁSA
+// ÉRTÉKELÉS
 // ============================================================
 
 app.post(
@@ -1201,18 +1491,7 @@ app.post(
         if (!ratedUserId) {
             return res.status(400).json({
                 error:
-                    "Hiányzó felhasználó."
-            });
-        }
-
-        if (
-            !Number.isInteger(stars) ||
-            stars < 1 ||
-            stars > 5
-        ) {
-            return res.status(400).json({
-                error:
-                    "Az értékelés 1 és 5 csillag között lehet."
+                    "Nincs megadva értékelt felhasználó."
             });
         }
 
@@ -1223,6 +1502,30 @@ app.post(
             return res.status(400).json({
                 error:
                     "Saját magadat nem értékelheted."
+            });
+        }
+
+        if (
+            stars < 1 ||
+            stars > 5
+        ) {
+            return res.status(400).json({
+                error:
+                    "Az értékelés 1 és 5 csillag között lehet."
+            });
+        }
+
+        const target =
+            db.users.find(
+                user =>
+                    user.id ===
+                    ratedUserId
+            );
+
+        if (!target) {
+            return res.status(404).json({
+                error:
+                    "A felhasználó nem található."
             });
         }
 
@@ -1238,20 +1541,6 @@ app.post(
             });
         }
 
-        const ratedUser =
-            db.users.find(
-                user =>
-                    user.id ===
-                    ratedUserId
-            );
-
-        if (!ratedUser) {
-            return res.status(404).json({
-                error:
-                    "A felhasználó nem található."
-            });
-        }
-
         const existing =
             db.ratings.find(
                 rating =>
@@ -1262,7 +1551,9 @@ app.post(
             );
 
         if (existing) {
-            existing.stars = stars;
+            existing.stars =
+                stars;
+
             existing.date =
                 new Date().toISOString();
         } else {
@@ -1286,7 +1577,6 @@ app.post(
     }
 );
 
-
 // ============================================================
 // JEGY ADÁSA
 // ============================================================
@@ -1298,7 +1588,9 @@ app.post(
         const currentUser = getUser(req);
 
         const receiverId =
-            Number(req.body.receiverId);
+            Number(
+                req.body.receiverId
+            );
 
         const subject =
             String(
@@ -1311,19 +1603,18 @@ app.post(
         if (!receiverId) {
             return res.status(400).json({
                 error:
-                    "Hiányzó felhasználó."
+                    "Nincs megadva tanuló."
             });
         }
 
         if (!subject) {
             return res.status(400).json({
                 error:
-                    "A tantárgy megadása kötelező."
+                    "Add meg a tantárgyat."
             });
         }
 
         if (
-            !Number.isInteger(grade) ||
             grade < 1 ||
             grade > 5
         ) {
@@ -1371,12 +1662,17 @@ app.post(
 
         db.grades.push({
             id: nextId("grade"),
+
             giver:
                 currentUser.id,
+
             receiver:
                 receiverId,
+
             subject,
+
             grade,
+
             date:
                 new Date().toISOString()
         });
@@ -1389,7 +1685,6 @@ app.post(
     }
 );
 
-
 // ============================================================
 // JEGYEK LEKÉRÉSE
 // ============================================================
@@ -1399,48 +1694,60 @@ app.get(
     requireLogin,
     (req, res) => {
         const currentUser = getUser(req);
+
         const userId =
             Number(req.params.userId);
 
         if (
-            userId !== currentUser.id
+            userId !==
+            currentUser.id
         ) {
             return res.status(403).json({
                 error:
-                    "Nincs hozzáférésed ezekhez a jegyekhez."
+                    "Nincs hozzáférésed."
             });
         }
 
         const grades =
             db.grades
                 .filter(
-                    grade =>
-                        grade.receiver ===
-                        currentUser.id
+                    item =>
+                        item.receiver ===
+                        userId
                 )
-                .map(grade => {
-                    const giver =
-                        db.users.find(
-                            user =>
-                                user.id ===
-                                grade.giver
-                        );
-
-                    return {
-                        ...grade,
-                        giverName:
-                            giver
-                                ? giver.name
-                                : "Ismeretlen"
-                    };
-                });
+                .sort(
+                    (a, b) =>
+                        new Date(b.date) -
+                        new Date(a.date)
+                )
+                .map(item => ({
+                    id: item.id,
+                    giver:
+                        item.giver,
+                    giverName:
+                        (
+                            db.users.find(
+                                user =>
+                                    user.id ===
+                                    item.giver
+                            ) || {}
+                        ).name ||
+                        "Ismeretlen",
+                    receiver:
+                        item.receiver,
+                    subject:
+                        item.subject,
+                    grade:
+                        item.grade,
+                    date:
+                        item.date
+                }));
 
         res.json({
             grades
         });
     }
 );
-
 
 // ============================================================
 // STATISZTIKÁK
@@ -1452,18 +1759,10 @@ app.get(
     (req, res) => {
         const currentUser = getUser(req);
 
-        const friends =
-            db.friendships.filter(
-                friendship =>
-                    friendship.status ===
-                        "accepted" &&
-                    (
-                        friendship.sender ===
-                            currentUser.id ||
-                        friendship.receiver ===
-                            currentUser.id
-                    )
-            ).length;
+        const friendIds =
+            getFriendIds(
+                currentUser.id
+            );
 
         const sentMessages =
             db.messages.filter(
@@ -1487,40 +1786,47 @@ app.get(
             ).length;
 
         res.json({
-            friends,
+            friends:
+                friendIds.length,
+
             sentMessages,
+
             materials,
+
             grades
         });
     }
 );
 
-
 // ============================================================
-// STATIKUS FÁJLOK
+// STATIKUS WEBOLDAL
 // ============================================================
 
 app.use(
     express.static(
-        path.join(__dirname, "public")
+        path.join(
+            __dirname,
+            "public"
+        )
     )
 );
-
 
 // ============================================================
 // SPA FALLBACK
 // ============================================================
 
-app.get(/.*/, (req, res) => {
-    res.sendFile(
-        path.join(
-            __dirname,
-            "public",
-            "index.html"
-        )
-    );
-});
-
+app.get(
+    /.*/,
+    (req, res) => {
+        res.sendFile(
+            path.join(
+                __dirname,
+                "public",
+                "index.html"
+            )
+        );
+    }
+);
 
 // ============================================================
 // SZERVER INDÍTÁSA
@@ -1529,22 +1835,28 @@ app.get(/.*/, (req, res) => {
 app.listen(
     PORT,
     () => {
-        console.log("");
         console.log(
-            "======================================"
+            "================================"
         );
+
         console.log(
             "       TANULÓBARÁT SZERVER"
         );
+
         console.log(
-            "======================================"
+            "================================"
         );
+
         console.log(
-            `Szerver: http://localhost:${PORT}`
+            `Szerver port: ${PORT}`
         );
+
         console.log(
-            "======================================"
+            `Környezet: ${
+                isProduction
+                    ? "production"
+                    : "local"
+            }`
         );
-        console.log("");
     }
 );

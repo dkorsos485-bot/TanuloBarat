@@ -1,5 +1,6 @@
 /* ============================================================
    TANULÓBARÁT - APP.JS
+   Teljes kliensoldali alkalmazás
 ============================================================ */
 
 const state = {
@@ -11,15 +12,23 @@ const state = {
     currentFriend: null,
     currentMessages: [],
     currentPage: "home",
+
     ratingTargetId: null,
     ratingValue: 0,
+
     gradeTargetId: null,
     gradeValue: 0,
+
     generatedAI: null,
     aiType: "material",
-    selectedSendFriendId: null,
-    searchUsers: []
+
+    searchUsers: [],
+    selectedSendFriendId: null
 };
+
+/* ============================================================
+   SEGÉDFÜGGVÉNYEK
+============================================================ */
 
 const $ = id => document.getElementById(id);
 
@@ -37,7 +46,9 @@ function formatDate(date) {
 
     const d = new Date(date);
 
-    if (Number.isNaN(d.getTime())) return "";
+    if (Number.isNaN(d.getTime())) {
+        return "";
+    }
 
     return d.toLocaleString("hu-HU", {
         year: "numeric",
@@ -58,12 +69,14 @@ async function api(url, options = {}) {
         ...(options.body instanceof FormData
             ? {}
             : {
-                "Content-Type": "application/json"
+                "Content-Type":
+                    "application/json"
             }),
         ...(options.headers || {})
     };
 
-    const response = await fetch(url, config);
+    const response =
+        await fetch(url, config);
 
     let data = {};
 
@@ -81,7 +94,6 @@ async function api(url, options = {}) {
 
     return data;
 }
-
 
 /* ============================================================
    TOAST
@@ -115,21 +127,18 @@ function showToast(message, type = "info") {
     }, 3000);
 }
 
-
 /* ============================================================
    LOADING
 ============================================================ */
 
-function setLoading(
-    show,
-    text = "Betöltés..."
-) {
+function setLoading(show, text = "Betöltés...") {
     const el = $("globalLoading");
 
     if (!el) return;
 
     if ($("loadingText")) {
-        $("loadingText").textContent = text;
+        $("loadingText").textContent =
+            text;
     }
 
     el.classList.toggle(
@@ -137,7 +146,6 @@ function setLoading(
         !show
     );
 }
-
 
 /* ============================================================
    MODAL
@@ -163,9 +171,8 @@ function closeModal(id) {
     modal.style.display = "none";
 }
 
-
 /* ============================================================
-   AUTH / APP NÉZET
+   AUTH / APP
 ============================================================ */
 
 function showAuth() {
@@ -198,16 +205,9 @@ function showApp() {
     }
 
     updateUserUI();
-
     navigate("home");
-
     ensureProfileEditButton();
 }
-
-
-/* ============================================================
-   NAVIGÁCIÓ
-============================================================ */
 
 function navigate(page) {
     const pages = [
@@ -260,15 +260,27 @@ function navigate(page) {
         sidebar.classList.remove("open");
     }
 
+    if (page === "friends") {
+        loadFriends();
+        loadRequests();
+    }
+
+    if (page === "learning") {
+        loadMaterials();
+    }
+
+    if (page === "grades") {
+        loadGrades();
+    }
+
     window.scrollTo({
         top: 0,
         behavior: "smooth"
     });
 }
 
-
 /* ============================================================
-   FELHASZNÁLÓ UI
+   FELHASZNÁLÓI FELÜLET
 ============================================================ */
 
 function updateUserUI() {
@@ -328,41 +340,29 @@ function updateUserUI() {
             `@${username}`;
     }
 
-    if ($("profileAvatar")) {
-        if (state.user.avatar) {
-            $("profileAvatar").innerHTML =
-                `<img src="${escapeHTML(state.user.avatar)}"
-                      alt="Profilkép"
-                      style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
-        } else {
-            $("profileAvatar").textContent =
-                initial;
-        }
-    }
+    [
+        "profileAvatar",
+        "userAvatar",
+        "sidebarAvatar"
+    ].forEach(id => {
+        if ($(id)) {
+            const el = $(id);
 
-    if ($("userAvatar")) {
-        if (state.user.avatar) {
-            $("userAvatar").innerHTML =
-                `<img src="${escapeHTML(state.user.avatar)}"
-                      alt="Profilkép"
-                      style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
-        } else {
-            $("userAvatar").textContent =
-                initial;
+            if (state.user.avatar) {
+                el.textContent = "";
+                el.style.backgroundImage =
+                    `url("${state.user.avatar}")`;
+                el.style.backgroundSize =
+                    "cover";
+                el.style.backgroundPosition =
+                    "center";
+            } else {
+                el.style.backgroundImage =
+                    "";
+                el.textContent = initial;
+            }
         }
-    }
-
-    if ($("sidebarAvatar")) {
-        if (state.user.avatar) {
-            $("sidebarAvatar").innerHTML =
-                `<img src="${escapeHTML(state.user.avatar)}"
-                      alt="Profilkép"
-                      style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
-        } else {
-            $("sidebarAvatar").textContent =
-                initial;
-        }
-    }
+    });
 
     if ($("profileJoined")) {
         $("profileJoined").textContent =
@@ -387,9 +387,8 @@ function updateUserUI() {
     }
 }
 
-
 /* ============================================================
-   BEJELENTKEZÉS ELLENŐRZÉSE
+   LOGIN
 ============================================================ */
 
 async function checkLogin() {
@@ -398,8 +397,7 @@ async function checkLogin() {
             await api("/api/me");
 
         if (data.user) {
-            state.user =
-                data.user;
+            state.user = data.user;
 
             showApp();
 
@@ -412,20 +410,12 @@ async function checkLogin() {
     }
 }
 
-
-/* ============================================================
-   LOGIN
-============================================================ */
-
 async function login() {
     const username =
-        $("loginUsername")
-            ?.value
-            .trim();
+        $("loginUsername")?.value.trim();
 
     const password =
-        $("loginPassword")
-            ?.value || "";
+        $("loginPassword")?.value || "";
 
     if (!username || !password) {
         return showToast(
@@ -436,19 +426,15 @@ async function login() {
 
     try {
         const data =
-            await api(
-                "/api/login",
-                {
-                    method: "POST",
-                    body: JSON.stringify({
-                        username,
-                        password
-                    })
-                }
-            );
+            await api("/api/login", {
+                method: "POST",
+                body: JSON.stringify({
+                    username,
+                    password
+                })
+            });
 
-        state.user =
-            data.user;
+        state.user = data.user;
 
         showApp();
 
@@ -458,7 +444,6 @@ async function login() {
             "Sikeres bejelentkezés! 👋",
             "success"
         );
-
     } catch (error) {
         showToast(
             error.message,
@@ -467,35 +452,26 @@ async function login() {
     }
 }
 
-
 /* ============================================================
    REGISZTRÁCIÓ
 ============================================================ */
 
 async function register() {
     const name =
-        $("registerName")
-            ?.value
-            .trim();
+        $("registerName")?.value.trim();
 
     const username =
-        $("registerUsername")
-            ?.value
-            .trim();
+        $("registerUsername")?.value.trim();
 
     const email =
-        $("registerEmail")
-            ?.value
-            .trim();
+        $("registerEmail")?.value.trim();
 
     const password =
-        $("registerPassword")
-            ?.value || "";
+        $("registerPassword")?.value || "";
 
     const grade =
         Number(
-            $("registerGrade")
-                ?.value
+            $("registerGrade")?.value
         );
 
     if (
@@ -527,22 +503,18 @@ async function register() {
 
     try {
         const data =
-            await api(
-                "/api/register",
-                {
-                    method: "POST",
-                    body: JSON.stringify({
-                        name,
-                        username,
-                        email,
-                        password,
-                        grade
-                    })
-                }
-            );
+            await api("/api/register", {
+                method: "POST",
+                body: JSON.stringify({
+                    name,
+                    username,
+                    email,
+                    password,
+                    grade
+                })
+            });
 
-        state.user =
-            data.user;
+        state.user = data.user;
 
         showApp();
 
@@ -552,7 +524,6 @@ async function register() {
             "Sikeres regisztráció! 🎉",
             "success"
         );
-
     } catch (error) {
         showToast(
             error.message,
@@ -560,7 +531,6 @@ async function register() {
         );
     }
 }
-
 
 /* ============================================================
    LOGOUT
@@ -582,6 +552,7 @@ async function logout() {
     state.materials = [];
     state.grades = [];
     state.currentFriend = null;
+    state.currentMessages = [];
 
     showAuth();
 
@@ -591,17 +562,14 @@ async function logout() {
     );
 }
 
-
 /* ============================================================
-   BARÁTOK BETÖLTÉSE
+   BARÁTOK
 ============================================================ */
 
 async function loadFriends() {
     try {
         const data =
-            await api(
-                "/api/friends"
-            );
+            await api("/api/friends");
 
         state.friends =
             data.friends || [];
@@ -623,16 +591,10 @@ async function loadFriends() {
             $("profileFriendCount").textContent =
                 state.friends.length;
         }
-
     } catch (error) {
         console.error(error);
     }
 }
-
-
-/* ============================================================
-   BARÁTOK MEGJELENÍTÉSE
-============================================================ */
 
 function renderFriends() {
     const box =
@@ -656,88 +618,66 @@ function renderFriends() {
     }
 
     box.innerHTML =
-        state.friends
-            .map(friend => {
-                const initial =
-                    (
-                        friend.name ||
-                        friend.username ||
-                        "?"
-                    )
-                        .charAt(0)
-                        .toUpperCase();
+        state.friends.map(friend => {
+            const initial =
+                (
+                    friend.name ||
+                    friend.username ||
+                    "?"
+                )
+                    .charAt(0)
+                    .toUpperCase();
 
-                const avatar =
-                    friend.avatar
-                        ? `
-                            <img
-                                src="${escapeHTML(friend.avatar)}"
-                                alt="Profilkép"
-                                style="
-                                    width:100%;
-                                    height:100%;
-                                    object-fit:cover;
-                                    border-radius:50%;
-                                "
-                            >
-                        `
-                        : escapeHTML(initial);
+            return `
+                <div class="friend-card">
 
-                return `
-                    <div class="friend-card">
+                    <div class="friend-avatar">
+                        ${
+                            friend.avatar
+                                ? `<img src="${escapeHTML(friend.avatar)}">`
+                                : escapeHTML(initial)
+                        }
+                    </div>
 
-                        <div class="friend-avatar">
-                            ${avatar}
-                        </div>
+                    <div class="friend-info">
+                        <strong>
+                            ${escapeHTML(friend.name)}
+                        </strong>
 
-                        <div class="friend-info">
-                            <strong>
-                                ${escapeHTML(friend.name)}
-                            </strong>
+                        <span>
+                            @${escapeHTML(friend.username)}
+                        </span>
+                    </div>
 
-                            <span>
-                                @${escapeHTML(friend.username)}
-                            </span>
-                        </div>
+                    <div class="friend-actions">
 
-                        <div class="friend-actions">
+                        <button
+                            type="button"
+                            class="secondary-button"
+                            data-chat-id="${friend.id}">
+                            💬 Chat
+                        </button>
 
-                            <button
-                                type="button"
-                                class="secondary-button"
-                                data-chat-id="${friend.id}"
-                            >
-                                💬 Chat
-                            </button>
+                        <button
+                            type="button"
+                            class="secondary-button"
+                            data-rate-id="${friend.id}">
+                            ⭐ Értékelés
+                        </button>
 
-                            <button
-                                type="button"
-                                class="secondary-button"
-                                data-rate-id="${friend.id}"
-                            >
-                                ⭐ Értékelés
-                            </button>
-
-                            <button
-                                type="button"
-                                class="secondary-button"
-                                data-grade-id="${friend.id}"
-                            >
-                                📊 Jegy
-                            </button>
-
-                        </div>
+                        <button
+                            type="button"
+                            class="secondary-button"
+                            data-grade-id="${friend.id}">
+                            📊 Jegy
+                        </button>
 
                     </div>
-                `;
-            })
-            .join("");
+
+                </div>
+            `;
+        }).join("");
 }
-
-
-/* ============================================================
-   BARÁTI KÉRÉSEK
-============================================================ */
 
 async function loadRequests() {
     try {
@@ -763,16 +703,10 @@ async function loadRequests() {
                 state.requests.length === 0
             );
         }
-
     } catch (error) {
         console.error(error);
     }
 }
-
-
-/* ============================================================
-   KÉRÉSEK MEGJELENÍTÉSE
-============================================================ */
 
 function renderRequests() {
     const box =
@@ -784,7 +718,7 @@ function renderRequests() {
         box.innerHTML = `
             <div class="empty-state compact-empty">
                 <div class="empty-icon">📭</div>
-                <h3>Nincs új baráti kérés</h3>
+                <p>Nincs új barátkérelmed.</p>
             </div>
         `;
 
@@ -792,80 +726,132 @@ function renderRequests() {
     }
 
     box.innerHTML =
-        state.requests
-            .map(request => {
-                const initial =
-                    (
-                        request.name ||
-                        request.username ||
-                        "?"
-                    )
-                        .charAt(0)
-                        .toUpperCase();
+        state.requests.map(request => `
+            <div class="request-card">
 
-                const avatar =
-                    request.avatar
-                        ? `
-                            <img
-                                src="${escapeHTML(request.avatar)}"
-                                alt="Profilkép"
-                                style="
-                                    width:100%;
-                                    height:100%;
-                                    object-fit:cover;
-                                    border-radius:50%;
-                                "
-                            >
-                        `
-                        : escapeHTML(initial);
+                <div>
+                    <strong>
+                        ${escapeHTML(request.name)}
+                    </strong>
 
-                return `
-                    <div class="friend-request-card">
+                    <span>
+                        @${escapeHTML(request.username)}
+                    </span>
+                </div>
 
-                        <div class="friend-avatar">
-                            ${avatar}
-                        </div>
+                <div class="request-actions">
 
-                        <div class="friend-info">
-                            <strong>
-                                ${escapeHTML(request.name)}
-                            </strong>
+                    <button
+                        type="button"
+                        class="primary-button"
+                        data-accept-id="${request.id}">
+                        ✓ Elfogadás
+                    </button>
 
-                            <span>
-                                @${escapeHTML(request.username)}
-                            </span>
-                        </div>
+                    <button
+                        type="button"
+                        class="secondary-button"
+                        data-reject-id="${request.id}">
+                        ✕ Elutasítás
+                    </button>
 
-                        <div class="friend-actions">
+                </div>
 
-                            <button
-                                type="button"
-                                class="primary-button"
-                                data-accept-id="${request.id}"
-                            >
-                                ✓ Elfogad
-                            </button>
-
-                            <button
-                                type="button"
-                                class="secondary-button"
-                                data-reject-id="${request.id}"
-                            >
-                                ✕ Elutasít
-                            </button>
-
-                        </div>
-
-                    </div>
-                `;
-            })
-            .join("");
+            </div>
+        `).join("");
 }
 
+async function searchUsers() {
+    const input =
+        $("userSearch");
 
-/* ============================================================
-   BARÁTI KÉRÉS KÜLDÉSE
-============================================================ */
+    if (!input) return;
+
+    const q =
+        input.value.trim();
+
+    if (!q) {
+        return showToast(
+            "Írj be egy nevet vagy felhasználónevet!",
+            "error"
+        );
+    }
+
+    try {
+        const data =
+            await api(
+                `/api/users?q=${encodeURIComponent(q)}`
+            );
+
+        state.searchUsers =
+            data.users || [];
+
+        renderSearchUsers();
+    } catch (error) {
+        showToast(
+            error.message,
+            "error"
+        );
+    }
+}
+
+function renderSearchUsers() {
+    const box =
+        $("userSearchResults");
+
+    if (!box) return;
+
+    if (!state.searchUsers.length) {
+        box.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">🔎</div>
+                <p>Nem található felhasználó.</p>
+            </div>
+        `;
+
+        return;
+    }
+
+    box.innerHTML =
+        state.searchUsers.map(user => `
+            <div class="user-search-card">
+
+                <div class="friend-avatar">
+                    ${
+                        user.avatar
+                            ? `<img src="${escapeHTML(user.avatar)}">`
+                            : escapeHTML(
+                                (
+                                    user.name ||
+                                    user.username ||
+                                    "?"
+                                )
+                                    .charAt(0)
+                                    .toUpperCase()
+                            )
+                    }
+                </div>
+
+                <div class="friend-info">
+                    <strong>
+                        ${escapeHTML(user.name)}
+                    </strong>
+
+                    <span>
+                        @${escapeHTML(user.username)}
+                    </span>
+                </div>
+
+                <button
+                    type="button"
+                    class="primary-button"
+                    data-request-id="${user.id}">
+                    👥 Barát hozzáadása
+                </button>
+
+            </div>
+        `).join("");
+}
 
 async function sendFriendRequest(userId) {
     try {
@@ -880,12 +866,11 @@ async function sendFriendRequest(userId) {
         );
 
         showToast(
-            "Baráti kérés elküldve! 👥",
+            "Barátkérelem elküldve! 📩",
             "success"
         );
 
-        await searchUsers();
-
+        searchUsers();
     } catch (error) {
         showToast(
             error.message,
@@ -893,11 +878,6 @@ async function sendFriendRequest(userId) {
         );
     }
 }
-
-
-/* ============================================================
-   BARÁTI KÉRÉS ELFOGADÁSA
-============================================================ */
 
 async function acceptFriend(userId) {
     try {
@@ -909,15 +889,12 @@ async function acceptFriend(userId) {
         );
 
         showToast(
-            "Baráti kérés elfogadva! 🎉",
+            "Barátkérelem elfogadva! 🎉",
             "success"
         );
 
-        await Promise.all([
-            loadFriends(),
-            loadRequests()
-        ]);
-
+        await loadFriends();
+        await loadRequests();
     } catch (error) {
         showToast(
             error.message,
@@ -925,11 +902,6 @@ async function acceptFriend(userId) {
         );
     }
 }
-
-
-/* ============================================================
-   BARÁTI KÉRÉS ELUTASÍTÁSA
-============================================================ */
 
 async function rejectFriend(userId) {
     try {
@@ -941,12 +913,11 @@ async function rejectFriend(userId) {
         );
 
         showToast(
-            "Baráti kérés elutasítva.",
+            "Barátkérelem elutasítva.",
             "info"
         );
 
         await loadRequests();
-
     } catch (error) {
         showToast(
             error.message,
@@ -954,177 +925,6 @@ async function rejectFriend(userId) {
         );
     }
 }
-
-
-/* ============================================================
-   FELHASZNÁLÓK KERESÉSE
-============================================================ */
-
-async function searchUsers() {
-    const input =
-        $("userSearch");
-
-    const q =
-        input
-            ? input.value.trim()
-            : "";
-
-    if (!q) {
-        if ($("searchResults")) {
-            $("searchResults").innerHTML = "";
-        }
-
-        return;
-    }
-
-    try {
-        const data =
-            await api(
-                `/api/users?q=${encodeURIComponent(q)}`
-            );
-
-        state.searchUsers =
-            data.users || [];
-
-        renderSearchResults();
-
-    } catch (error) {
-        showToast(
-            error.message,
-            "error"
-        );
-    }
-}
-
-
-/* ============================================================
-   KERESÉSI TALÁLATOK
-============================================================ */
-
-function renderSearchResults() {
-    const box =
-        $("searchResults");
-
-    if (!box) return;
-
-    if (!state.searchUsers.length) {
-        box.innerHTML = `
-            <div class="empty-state compact-empty">
-                <div class="empty-icon">🔎</div>
-                <h3>Nincs találat</h3>
-                <p>Próbálj másik nevet vagy felhasználónevet.</p>
-            </div>
-        `;
-
-        return;
-    }
-
-    const friendIds =
-        new Set(
-            state.friends.map(
-                friend => Number(friend.id)
-            )
-        );
-
-    const requestIds =
-        new Set(
-            state.requests.map(
-                request => Number(request.id)
-            )
-        );
-
-    box.innerHTML =
-        state.searchUsers
-            .map(user => {
-                const initial =
-                    (
-                        user.name ||
-                        user.username ||
-                        "?"
-                    )
-                        .charAt(0)
-                        .toUpperCase();
-
-                let action = "";
-
-                if (
-                    friendIds.has(
-                        Number(user.id)
-                    )
-                ) {
-                    action = `
-                        <span class="status-badge">
-                            ✓ Barát
-                        </span>
-                    `;
-                } else if (
-                    requestIds.has(
-                        Number(user.id)
-                    )
-                ) {
-                    action = `
-                        <span class="status-badge">
-                            ⏳ Kérés
-                        </span>
-                    `;
-                } else {
-                    action = `
-                        <button
-                            type="button"
-                            class="primary-button"
-                            data-request-id="${user.id}"
-                        >
-                            ➕ Barátnak jelöl
-                        </button>
-                    `;
-                }
-
-                return `
-                    <div class="search-user-card">
-
-                        <div class="friend-avatar">
-                            ${
-                                user.avatar
-                                    ? `
-                                        <img
-                                            src="${escapeHTML(user.avatar)}"
-                                            alt="Profilkép"
-                                            style="
-                                                width:100%;
-                                                height:100%;
-                                                object-fit:cover;
-                                                border-radius:50%;
-                                            "
-                                        >
-                                    `
-                                    : escapeHTML(initial)
-                            }
-                        </div>
-
-                        <div class="friend-info">
-                            <strong>
-                                ${escapeHTML(user.name)}
-                            </strong>
-
-                            <span>
-                                @${escapeHTML(user.username)}
-                            </span>
-
-                            <small>
-                                ${user.grade || ""}. osztály
-                            </small>
-                        </div>
-
-                        <div class="friend-actions">
-                            ${action}
-                        </div>
-
-                    </div>
-                `;
-            })
-            .join("");
-}
-
 
 /* ============================================================
    CHAT
@@ -1138,67 +938,45 @@ async function openChat(friendId) {
                 Number(friendId)
         );
 
-    if (!friend) {
-        return showToast(
-            "A barát nem található.",
-            "error"
-        );
-    }
+    if (!friend) return;
 
     state.currentFriend =
         friend;
 
-    if ($("chatTitle")) {
-        $("chatTitle").textContent =
+    const modal =
+        $("chatModal");
+
+    if (modal) {
+        openModal("chatModal");
+    }
+
+    if ($("chatFriendName")) {
+        $("chatFriendName").textContent =
             friend.name;
     }
 
-    if ($("chatStatus")) {
-        $("chatStatus").textContent =
-            "● Online";
+    if ($("chatFriendUsername")) {
+        $("chatFriendUsername").textContent =
+            `@${friend.username}`;
     }
-
-    if ($("chatAvatar")) {
-        if (friend.avatar) {
-            $("chatAvatar").innerHTML =
-                `<img
-                    src="${escapeHTML(friend.avatar)}"
-                    alt="Profilkép"
-                    style="
-                        width:100%;
-                        height:100%;
-                        object-fit:cover;
-                        border-radius:50%;
-                    "
-                >`;
-        } else {
-            $("chatAvatar").textContent =
-                (
-                    friend.name ||
-                    friend.username ||
-                    "?"
-                )
-                    .charAt(0)
-                    .toUpperCase();
-        }
-    }
-
-    openModal("chatModal");
 
     await loadMessages();
 
-    setTimeout(() => {
-        $("chatInput")?.focus();
-    }, 100);
+    const input =
+        $("chatInput");
+
+    if (input) {
+        setTimeout(
+            () => input.focus(),
+            100
+        );
+    }
 }
 
-
-/* ============================================================
-   ÜZENETEK BETÖLTÉSE
-============================================================ */
-
 async function loadMessages() {
-    if (!state.currentFriend) return;
+    if (!state.currentFriend) {
+        return;
+    }
 
     try {
         const data =
@@ -1210,16 +988,10 @@ async function loadMessages() {
             data.messages || [];
 
         renderMessages();
-
     } catch (error) {
         console.error(error);
     }
 }
-
-
-/* ============================================================
-   ÜZENETEK MEGJELENÍTÉSE
-============================================================ */
 
 function renderMessages() {
     const box =
@@ -1229,11 +1001,11 @@ function renderMessages() {
 
     if (!state.currentMessages.length) {
         box.innerHTML = `
-            <div class="empty-chat">
-                <div>💬</div>
+            <div class="empty-state">
+                <div class="empty-icon">💬</div>
+                <h3>Még nincs üzenet</h3>
                 <p>
-                    Még nincs üzenet.
-                    Írj valamit!
+                    Kezdd el a beszélgetést!
                 </p>
             </div>
         `;
@@ -1242,72 +1014,73 @@ function renderMessages() {
     }
 
     box.innerHTML =
-        state.currentMessages
-            .map(message => {
-                const own =
-                    Number(message.sender) ===
-                    Number(state.user.id);
+        state.currentMessages.map(message => {
+            const own =
+                Number(message.sender) ===
+                Number(state.user?.id);
 
-                const material =
-                    message.type === "material";
+            const isMaterial =
+                message.type ===
+                "material" &&
+                message.materialId;
 
-                return `
-                    <div class="chat-message ${
-                        own
-                            ? "message-own"
-                            : "message-other"
-                    }">
+            return `
+                <div class="chat-message ${
+                    own ? "own" : "other"
+                }">
 
-                        <div class="message-bubble">
+                    <div class="message-bubble">
 
-                            ${
-                                material
-                                    ? `
-                                        <div class="material-message">
+                        ${
+                            isMaterial
+                                ? `
+                                    <div class="material-message">
+
+                                        <div class="material-message-icon">
                                             📚
-                                            ${escapeHTML(message.message)}
-
-                                            ${
-                                                message.materialId
-                                                    ? `
-                                                        <button
-                                                            type="button"
-                                                            class="material-open-button"
-                                                            data-material-id="${message.materialId}"
-                                                        >
-                                                            Megnyitás
-                                                        </button>
-                                                    `
-                                                    : ""
-                                            }
                                         </div>
-                                    `
-                                    : `
-                                        <div>
-                                            ${escapeHTML(message.message)}
+
+                                        <div class="material-message-info">
+                                            <strong>
+                                                ${escapeHTML(message.message)}
+                                            </strong>
+
+                                            <span>
+                                                Tananyag
+                                            </span>
                                         </div>
-                                    `
-                            }
 
-                            <small>
-                                ${formatDate(message.date)}
-                            </small>
+                                        <button
+                                            type="button"
+                                            class="primary-button"
+                                            data-material-id="${message.materialId}">
+                                            📖 Megnyitás
+                                        </button>
 
-                        </div>
+                                    </div>
+                                `
+                                : `
+                                    <div class="message-text">
+                                        ${escapeHTML(message.message)}
+                                    </div>
+                                `
+                        }
+
+                        <small>
+                            ${escapeHTML(
+                                formatDate(message.date)
+                            )}
+                        </small>
 
                     </div>
-                `;
-            })
-            .join("");
+
+                </div>
+            `;
+        }).join("");
 
     box.scrollTop =
         box.scrollHeight;
 }
-
-
-/* ============================================================
-   ÜZENET KÜLDÉSE
-============================================================ */
 
 async function sendMessage() {
     if (!state.currentFriend) {
@@ -1324,6 +1097,8 @@ async function sendMessage() {
 
     if (!message) return;
 
+    input.disabled = true;
+
     try {
         await api(
             `/api/messages/${state.currentFriend.id}`,
@@ -1338,15 +1113,16 @@ async function sendMessage() {
         input.value = "";
 
         await loadMessages();
-
     } catch (error) {
         showToast(
             error.message,
             "error"
         );
+    } finally {
+        input.disabled = false;
+        input.focus();
     }
 }
-
 
 /* ============================================================
    TANANYAGOK
@@ -1363,63 +1139,58 @@ async function loadMaterials() {
             data.materials || [];
 
         renderMaterials();
-
-        if ($("materialCount")) {
-            $("materialCount").textContent =
-                state.materials.length;
-        }
-
     } catch (error) {
         console.error(error);
     }
 }
 
-
-/* ============================================================
-   TANANYAGOK MEGJELENÍTÉSE
-============================================================ */
-
 function renderMaterials() {
     const box =
-        $("materialList");
+        $("materialsList");
 
     if (!box) return;
-
-    const search =
-        (
-            $("materialSearch")
-                ?.value || ""
-        )
-            .trim()
-            .toLowerCase();
-
-    const type =
-        $("materialTypeFilter")
-            ?.value || "";
 
     let materials =
         [...state.materials];
 
-    if (search) {
-        materials =
-            materials.filter(material =>
-                String(material.title)
-                    .toLowerCase()
-                    .includes(search) ||
-                String(material.subject)
-                    .toLowerCase()
-                    .includes(search) ||
-                String(material.content)
-                    .toLowerCase()
-                    .includes(search)
-            );
-    }
+    const search =
+        $("materialSearch")
+            ?.value
+            .trim()
+            .toLowerCase() || "";
 
-    if (type) {
+    const filter =
+        $("materialTypeFilter")
+            ?.value || "";
+
+    if (search) {
         materials =
             materials.filter(
                 material =>
-                    material.type === type
+                    String(
+                        material.title
+                    )
+                        .toLowerCase()
+                        .includes(search) ||
+                    String(
+                        material.subject
+                    )
+                        .toLowerCase()
+                        .includes(search) ||
+                    String(
+                        material.content
+                    )
+                        .toLowerCase()
+                        .includes(search)
+            );
+    }
+
+    if (filter) {
+        materials =
+            materials.filter(
+                material =>
+                    material.type ===
+                    filter
             );
     }
 
@@ -1429,7 +1200,7 @@ function renderMaterials() {
                 <div class="empty-icon">📚</div>
                 <h3>Nincs tananyag</h3>
                 <p>
-                    Generálj egyet a TanulóBarát AI segítségével.
+                    Készíts egyet az AI segítségével.
                 </p>
             </div>
         `;
@@ -1438,65 +1209,70 @@ function renderMaterials() {
     }
 
     box.innerHTML =
-        materials
-            .map(material => `
-                <div
-                    class="material-card"
-                    data-material-id="${material.id}"
-                >
+        materials.map(material => `
+            <div
+                class="material-card"
+                data-material-id="${material.id}">
 
-                    <div class="material-card-icon">
+                <div class="material-icon">
+                    ${
+                        material.type === "test"
+                            ? "📝"
+                            : material.type === "homework"
+                                ? "✏️"
+                                : "📚"
+                    }
+                </div>
+
+                <div class="material-info">
+
+                    <span class="material-subject">
+                        ${escapeHTML(
+                            material.subject
+                        )}
+                    </span>
+
+                    <h3>
+                        ${escapeHTML(
+                            material.title
+                        )}
+                    </h3>
+
+                    <p>
+                        ${escapeHTML(
+                            String(
+                                material.content
+                            ).slice(0, 150)
+                        )}
                         ${
-                            material.type === "test"
-                                ? "📝"
-                                : material.type === "homework"
-                                    ? "📚"
-                                    : "📖"
+                            String(
+                                material.content
+                            ).length > 150
+                                ? "..."
+                                : ""
                         }
-                    </div>
+                    </p>
 
-                    <div class="material-card-content">
-
-                        <h3>
-                            ${escapeHTML(material.title)}
-                        </h3>
-
-                        <div class="material-meta">
-                            ${escapeHTML(material.subject)}
-                            •
-                            ${formatDate(material.date)}
-                        </div>
-
-                        <p>
-                            ${escapeHTML(
-                                String(material.content)
-                                    .slice(0, 180)
-                            )}${
-                                String(material.content).length > 180
-                                    ? "..."
-                                    : ""
-                            }
-                        </p>
-
-                    </div>
-
-                    <button
-                        type="button"
-                        class="secondary-button"
-                        data-material-id="${material.id}"
-                    >
-                        Megnyitás
-                    </button>
+                    <small>
+                        ${escapeHTML(
+                            formatDate(
+                                material.date
+                            )
+                        )}
+                    </small>
 
                 </div>
-            `)
-            .join("");
+
+                <button
+                    type="button"
+                    class="primary-button"
+                    data-material-id="${material.id}">
+                    📖 Megnyitás
+                </button>
+
+            </div>
+        `).join("");
 }
-
-
-/* ============================================================
-   TANANYAG MEGNYITÁSA
-============================================================ */
 
 async function openMaterial(materialId) {
     try {
@@ -1514,26 +1290,9 @@ async function openMaterial(materialId) {
             );
         }
 
-        if ($("materialTitle")) {
-            $("materialTitle").textContent =
-                material.title;
-        }
-
-        if ($("materialContent")) {
-            $("materialContent").innerHTML =
-                escapeHTML(
-                    material.content
-                )
-                    .replaceAll(
-                        "\n",
-                        "<br>"
-                    );
-        }
-
-        openModal(
-            "materialModal"
+        showMaterialModal(
+            material
         );
-
     } catch (error) {
         showToast(
             error.message,
@@ -1542,9 +1301,110 @@ async function openMaterial(materialId) {
     }
 }
 
+function showMaterialModal(material) {
+    let modal =
+        $("materialViewerModal");
+
+    if (!modal) {
+        modal =
+            document.createElement("div");
+
+        modal.id =
+            "materialViewerModal";
+
+        modal.className =
+            "modal-overlay hidden";
+
+        document.body.appendChild(
+            modal
+        );
+    }
+
+    const typeName =
+        material.type === "test"
+            ? "📝 Teszt"
+            : material.type === "homework"
+                ? "✏️ Házi feladat"
+                : "📚 Tananyag";
+
+    modal.innerHTML = `
+        <div class="modal-card material-viewer-card">
+
+            <button
+                type="button"
+                class="modal-close"
+                data-close-material-viewer>
+                ✕
+            </button>
+
+            <div class="material-viewer-header">
+
+                <span>
+                    ${typeName}
+                </span>
+
+                <h2>
+                    ${escapeHTML(
+                        material.title
+                    )}
+                </h2>
+
+                <p>
+                    ${escapeHTML(
+                        material.subject
+                    )}
+                </p>
+
+            </div>
+
+            <div class="material-viewer-content">
+                ${escapeHTML(
+                    material.content
+                )
+                    .replaceAll(
+                        "\n",
+                        "<br>"
+                    )}
+            </div>
+
+            <div class="material-viewer-footer">
+
+                <small>
+                    Készítette:
+                    ${
+                        Number(material.creator) ===
+                        Number(state.user?.id)
+                            ? "Te"
+                            : "barát"
+                    }
+                </small>
+
+                <button
+                    type="button"
+                    class="primary-button"
+                    data-close-material-viewer>
+                    Bezárás
+                </button>
+
+            </div>
+
+        </div>
+    `;
+
+    modal.classList.remove(
+        "hidden"
+    );
+
+    modal.classList.add(
+        "active"
+    );
+
+    modal.style.display =
+        "flex";
+}
 
 /* ============================================================
-   AI MODAL
+   AI
 ============================================================ */
 
 function openAIModal() {
@@ -1558,31 +1418,24 @@ function openAIModal() {
         $("aiTopic").value = "";
     }
 
-    if ($("aiStatus")) {
-        $("aiStatus").textContent = "";
+    if ($("aiPreview")) {
+        $("aiPreview").innerHTML = "";
     }
 
-    state.aiType = "material";
-
     document
-        .querySelectorAll(
-            "[data-ai-type]"
-        )
+        .querySelectorAll("[data-ai-type]")
         .forEach(button => {
             button.classList.toggle(
                 "active",
-                button.dataset.aiType ===
+                (
+                    button.dataset.aiType ||
                     "material"
+                ) === state.aiType
             );
         });
 
     openModal("aiModal");
 }
-
-
-/* ============================================================
-   AI GENERÁLÁS
-============================================================ */
 
 async function generateAI() {
     const subject =
@@ -1611,11 +1464,6 @@ async function generateAI() {
             "⏳ Generálás...";
     }
 
-    if ($("aiStatus")) {
-        $("aiStatus").textContent =
-            "Az anyag elkészítése...";
-    }
-
     try {
         const data =
             await api(
@@ -1625,7 +1473,8 @@ async function generateAI() {
                     body: JSON.stringify({
                         subject,
                         topic,
-                        type: state.aiType
+                        type:
+                            state.aiType
                     })
                 }
             );
@@ -1633,29 +1482,7 @@ async function generateAI() {
         state.generatedAI =
             data;
 
-        closeModal("aiModal");
-
-        if ($("previewTitle")) {
-            $("previewTitle").textContent =
-                data.title ||
-                "AI tananyag";
-        }
-
-        if ($("previewContent")) {
-            $("previewContent").innerHTML =
-                escapeHTML(
-                    data.content || ""
-                )
-                    .replaceAll(
-                        "\n",
-                        "<br>"
-                    );
-        }
-
-        openModal(
-            "previewModal"
-        );
-
+        showAIPreview(data);
     } catch (error) {
         showToast(
             error.message,
@@ -1667,39 +1494,160 @@ async function generateAI() {
             button.textContent =
                 "✨ Generálás";
         }
-
-        if ($("aiStatus")) {
-            $("aiStatus").textContent = "";
-        }
     }
 }
 
+function showAIPreview(data) {
+    const box =
+        $("aiPreview");
 
-/* ============================================================
-   AI TANANYAG KÜLDÉS ELŐKÉSZÍTÉSE
-============================================================ */
+    if (box) {
+        box.innerHTML = `
+            <div class="ai-result">
 
-function approveAndSendAI() {
-    if (!state.generatedAI) {
-        return showToast(
-            "Nincs elkészült tananyag.",
-            "error"
-        );
+                <div class="ai-result-type">
+                    ${
+                        data.type === "test"
+                            ? "📝 TESZT"
+                            : data.type === "homework"
+                                ? "✏️ HÁZI FELADAT"
+                                : "📚 TANANYAG"
+                    }
+                </div>
+
+                <h2>
+                    ${escapeHTML(
+                        data.title
+                    )}
+                </h2>
+
+                <h3>
+                    📖 Magyarázat
+                </h3>
+
+                <p>
+                    ${escapeHTML(
+                        data.explanation
+                    ).replaceAll(
+                        "\n",
+                        "<br>"
+                    )}
+                </p>
+
+                <h3>
+                    ⭐ Fontos
+                </h3>
+
+                <p>
+                    ${escapeHTML(
+                        data.important
+                    ).replaceAll(
+                        "\n",
+                        "<br>"
+                    )}
+                </p>
+
+                <h3>
+                    💡 Példák
+                </h3>
+
+                <p>
+                    ${escapeHTML(
+                        data.examples
+                    ).replaceAll(
+                        "\n",
+                        "<br>"
+                    )}
+                </p>
+
+                <h3>
+                    📌 Összefoglaló
+                </h3>
+
+                <p>
+                    ${escapeHTML(
+                        data.summary
+                    ).replaceAll(
+                        "\n",
+                        "<br>"
+                    )}
+                </p>
+
+            </div>
+        `;
     }
 
-    closeModal("previewModal");
+    closeModal("aiModal");
+
+    openModal("previewModal");
+
+    if ($("previewContent")) {
+        $("previewContent").innerHTML =
+            `
+            <div class="ai-result">
+
+                <div class="ai-result-type">
+                    ${
+                        data.type === "test"
+                            ? "📝 TESZT"
+                            : data.type === "homework"
+                                ? "✏️ HÁZI FELADAT"
+                                : "📚 TANANYAG"
+                    }
+                </div>
+
+                <h2>
+                    ${escapeHTML(
+                        data.title
+                    )}
+                </h2>
+
+                <h3>📖 Magyarázat</h3>
+                <p>
+                    ${escapeHTML(
+                        data.explanation
+                    ).replaceAll(
+                        "\n",
+                        "<br>"
+                    )}
+                </p>
+
+                <h3>⭐ Fontos</h3>
+                <p>
+                    ${escapeHTML(
+                        data.important
+                    ).replaceAll(
+                        "\n",
+                        "<br>"
+                    )}
+                </p>
+
+                <h3>💡 Példák</h3>
+                <p>
+                    ${escapeHTML(
+                        data.examples
+                    ).replaceAll(
+                        "\n",
+                        "<br>"
+                    )}
+                </p>
+
+                <h3>📌 Összefoglaló</h3>
+                <p>
+                    ${escapeHTML(
+                        data.summary
+                    ).replaceAll(
+                        "\n",
+                        "<br>"
+                    )}
+                </p>
+
+            </div>
+            `;
+    }
 
     renderSendFriendList();
-
-    openModal(
-        "sendFriendModal"
-    );
 }
-
-
-/* ============================================================
-   BARÁT LISTA KÜLDÉSHEZ
-============================================================ */
 
 function renderSendFriendList() {
     const box =
@@ -1710,10 +1658,9 @@ function renderSendFriendList() {
     if (!state.friends.length) {
         box.innerHTML = `
             <div class="empty-state compact-empty">
-                <div class="empty-icon">👥</div>
-                <h3>Nincsenek barátaid</h3>
                 <p>
-                    Először adj hozzá valakit barátként.
+                    Először szerezz egy barátot,
+                    akinek elküldheted.
                 </p>
             </div>
         `;
@@ -1722,180 +1669,164 @@ function renderSendFriendList() {
     }
 
     box.innerHTML =
-        state.friends
-            .map(friend => `
-                <button
-                    type="button"
-                    class="send-friend-item"
-                    data-send-friend-id="${friend.id}"
-                >
+        state.friends.map(friend => `
+            <button
+                type="button"
+                class="send-friend-option ${
+                    Number(
+                        state.selectedSendFriendId
+                    ) === Number(friend.id)
+                        ? "selected"
+                        : ""
+                }"
+                data-send-friend-id="${friend.id}">
 
-                    <span class="send-friend-avatar">
-                        ${
-                            friend.avatar
-                                ? `
-                                    <img
-                                        src="${escapeHTML(friend.avatar)}"
-                                        alt="Profilkép"
-                                    >
-                                `
-                                : escapeHTML(
-                                    (
-                                        friend.name ||
-                                        friend.username ||
-                                        "?"
-                                    )
-                                        .charAt(0)
-                                        .toUpperCase()
+                <span>
+                    ${
+                        friend.avatar
+                            ? `<img src="${escapeHTML(friend.avatar)}">`
+                            : escapeHTML(
+                                (
+                                    friend.name ||
+                                    friend.username ||
+                                    "?"
                                 )
-                        }
-                    </span>
+                                    .charAt(0)
+                                    .toUpperCase()
+                            )
+                    }
+                </span>
 
-                    <span>
-                        ${escapeHTML(friend.name)}
-                    </span>
+                <strong>
+                    ${escapeHTML(
+                        friend.name
+                    )}
+                </strong>
 
-                    <span>
-                        ➜
-                    </span>
+                ${
+                    Number(
+                        state.selectedSendFriendId
+                    ) === Number(friend.id)
+                        ? "✓"
+                        : ""
+                }
 
-                </button>
-            `)
-            .join("");
+            </button>
+        `).join("");
 }
 
+function sendGeneratedMaterial(friendId) {
+    state.selectedSendFriendId =
+        Number(friendId);
 
-/* ============================================================
-   AI TANANYAG KÜLDÉSE
-============================================================ */
+    renderSendFriendList();
 
-async function sendGeneratedMaterial(friendId) {
+    approveAndSendAI();
+}
+
+async function approveAndSendAI() {
     if (!state.generatedAI) {
         return showToast(
-            "Nincs elkészült tananyag.",
+            "Nincs elkészített tananyag.",
             "error"
         );
     }
 
+    if (!state.selectedSendFriendId) {
+        return showToast(
+            "Válaszd ki, kinek szeretnéd elküldeni!",
+            "error"
+        );
+    }
+
+    const data =
+        state.generatedAI;
+
+    const button =
+        $("approveSendButton");
+
+    if (button) {
+        button.disabled = true;
+        button.textContent =
+            "⏳ Küldés...";
+    }
+
     try {
-        const data =
-            await api(
-                "/api/materials",
-                {
-                    method: "POST",
-                    body: JSON.stringify({
-                        subject:
-                            state.generatedAI.subject,
-                        title:
-                            state.generatedAI.title,
-                        content:
-                            state.generatedAI.content,
-                        type:
-                            state.generatedAI.type ||
-                            "material",
-                        friendId
-                    })
-                }
-            );
-
-        closeModal(
-            "sendFriendModal"
+        await api(
+            "/api/materials",
+            {
+                method: "POST",
+                body: JSON.stringify({
+                    subject:
+                        data.subject,
+                    title:
+                        data.title,
+                    content:
+                        data.content,
+                    type:
+                        data.type,
+                    friendId:
+                        state.selectedSendFriendId
+                })
+            }
         );
-
-        showToast(
-            "Tananyag elküldve! 📚",
-            "success"
-        );
-
-        state.generatedAI = null;
 
         await loadMaterials();
 
-        const friend =
-            state.friends.find(
-                f =>
-                    Number(f.id) ===
-                    Number(friendId)
-            );
+        showToast(
+            "A tananyag elküldve! 📚",
+            "success"
+        );
 
-        if (friend) {
-            await openChat(friend.id);
+        closeModal("previewModal");
+
+        state.generatedAI = null;
+        state.selectedSendFriendId =
+            null;
+
+        if (
+            state.currentFriend &&
+            Number(
+                state.currentFriend.id
+            ) === Number(
+                data.friendId
+            )
+        ) {
+            await loadMessages();
         }
-
     } catch (error) {
         showToast(
             error.message,
             "error"
         );
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.textContent =
+                "📤 Jóváhagyás és küldés";
+        }
     }
 }
-
 
 /* ============================================================
    ÉRTÉKELÉS
 ============================================================ */
 
-function openRating(
-    friendId,
-    friendName
-) {
+function openRating(userId, name) {
     state.ratingTargetId =
-        Number(friendId);
+        Number(userId);
 
     state.ratingValue = 0;
 
     if ($("ratingFriendName")) {
         $("ratingFriendName").textContent =
-            friendName;
-    }
-
-    if ($("ratingSelected")) {
-        $("ratingSelected").textContent =
-            "0 / 5";
-    }
-
-    if ($("ratingFriendAvatar")) {
-        const friend =
-            state.friends.find(
-                f =>
-                    Number(f.id) ===
-                    Number(friendId)
-            );
-
-        if (friend?.avatar) {
-            $("ratingFriendAvatar").innerHTML =
-                `<img
-                    src="${escapeHTML(friend.avatar)}"
-                    alt="Profilkép"
-                    style="
-                        width:100%;
-                        height:100%;
-                        object-fit:cover;
-                        border-radius:50%;
-                    "
-                >`;
-        } else {
-            $("ratingFriendAvatar").textContent =
-                (
-                    friendName ||
-                    "?"
-                )
-                    .charAt(0)
-                    .toUpperCase();
-        }
+            name;
     }
 
     updateRatingStars();
 
-    openModal(
-        "ratingModal"
-    );
+    openModal("ratingModal");
 }
-
-
-/* ============================================================
-   CSILLAGOK
-============================================================ */
 
 function updateRatingStars() {
     document
@@ -1903,39 +1834,25 @@ function updateRatingStars() {
             "#ratingStars button"
         )
         .forEach(button => {
-            const rating =
+            const value =
                 Number(
                     button.dataset.rating
                 );
 
             button.classList.toggle(
                 "selected",
-                rating <=
-                    state.ratingValue
+                value <=
+                state.ratingValue
             );
         });
-
-    if ($("ratingSelected")) {
-        $("ratingSelected").textContent =
-            `${state.ratingValue} / 5`;
-    }
-
-    if ($("submitRatingButton")) {
-        $("submitRatingButton").disabled =
-            state.ratingValue < 1;
-    }
 }
 
-
-/* ============================================================
-   ÉRTÉKELÉS MENTÉSE
-============================================================ */
-
 async function submitRating() {
-    if (
-        !state.ratingTargetId ||
-        !state.ratingValue
-    ) {
+    if (!state.ratingTargetId) {
+        return;
+    }
+
+    if (!state.ratingValue) {
         return showToast(
             "Válassz csillagot!",
             "error"
@@ -1961,13 +1878,9 @@ async function submitRating() {
         );
 
         showToast(
-            "Értékelés elmentve! ⭐",
+            "Értékelés mentve! ⭐",
             "success"
         );
-
-        state.ratingTargetId = null;
-        state.ratingValue = 0;
-
     } catch (error) {
         showToast(
             error.message,
@@ -1976,32 +1889,19 @@ async function submitRating() {
     }
 }
 
-
 /* ============================================================
-   JEGY MODAL
+   JEGY
 ============================================================ */
 
-function openGrade(
-    friendId,
-    friendName
-) {
+function openGrade(userId, name) {
     state.gradeTargetId =
-        Number(friendId);
+        Number(userId);
 
     state.gradeValue = 0;
 
     if ($("gradeFriendName")) {
         $("gradeFriendName").textContent =
-            friendName;
-    }
-
-    if ($("gradeSubject")) {
-        $("gradeSubject").value = "";
-    }
-
-    if ($("selectedGrade")) {
-        $("selectedGrade").textContent =
-            "Nincs kiválasztva";
+            name;
     }
 
     document
@@ -2014,53 +1914,31 @@ function openGrade(
             );
         });
 
+    if ($("selectedGrade")) {
+        $("selectedGrade").textContent =
+            "Nincs kiválasztva";
+    }
+
     if ($("submitGradeButton")) {
         $("submitGradeButton").disabled =
             true;
     }
 
-    if ($("gradeFriendAvatar")) {
-        const friend =
-            state.friends.find(
-                f =>
-                    Number(f.id) ===
-                    Number(friendId)
-            );
-
-        if (friend?.avatar) {
-            $("gradeFriendAvatar").innerHTML =
-                `<img
-                    src="${escapeHTML(friend.avatar)}"
-                    alt="Profilkép"
-                    style="
-                        width:100%;
-                        height:100%;
-                        object-fit:cover;
-                        border-radius:50%;
-                    "
-                >`;
-        } else {
-            $("gradeFriendAvatar").textContent =
-                (
-                    friendName ||
-                    "?"
-                )
-                    .charAt(0)
-                    .toUpperCase();
-        }
-    }
-
-    openModal(
-        "gradeModal"
-    );
+    openModal("gradeModal");
 }
 
-
-/* ============================================================
-   JEGY MENTÉSE
-============================================================ */
-
 async function submitGrade() {
+    if (!state.gradeTargetId) {
+        return;
+    }
+
+    if (!state.gradeValue) {
+        return showToast(
+            "Válassz jegyet!",
+            "error"
+        );
+    }
+
     const subject =
         $("gradeSubject")
             ?.value
@@ -2069,16 +1947,6 @@ async function submitGrade() {
     if (!subject) {
         return showToast(
             "Add meg a tantárgyat!",
-            "error"
-        );
-    }
-
-    if (
-        !state.gradeTargetId ||
-        !state.gradeValue
-    ) {
-        return showToast(
-            "Válassz jegyet!",
             "error"
         );
     }
@@ -2107,9 +1975,10 @@ async function submitGrade() {
             "success"
         );
 
-        state.gradeTargetId = null;
-        state.gradeValue = 0;
-
+        if ($("gradeSubject")) {
+            $("gradeSubject").value =
+                "";
+        }
     } catch (error) {
         showToast(
             error.message,
@@ -2117,11 +1986,6 @@ async function submitGrade() {
         );
     }
 }
-
-
-/* ============================================================
-   JEGYEK BETÖLTÉSE
-============================================================ */
 
 async function loadGrades() {
     if (!state.user) return;
@@ -2136,16 +2000,10 @@ async function loadGrades() {
             data.grades || [];
 
         renderGrades();
-
     } catch (error) {
         console.error(error);
     }
 }
-
-
-/* ============================================================
-   JEGYEK MEGJELENÍTÉSE
-============================================================ */
 
 function renderGrades() {
     const box =
@@ -2153,369 +2011,78 @@ function renderGrades() {
 
     if (!box) return;
 
-    const grades =
-        state.grades;
-
-    if (!grades.length) {
+    if (!state.grades.length) {
         box.innerHTML = `
             <div class="empty-state">
                 <div class="empty-icon">📊</div>
                 <h3>Még nincs jegyed</h3>
                 <p>
-                    A barátaid által adott jegyek itt jelennek meg.
+                    A barátaidtól kapott jegyek itt jelennek meg.
                 </p>
             </div>
         `;
 
-        if ($("gradesAverage")) {
-            $("gradesAverage").textContent =
-                "–";
-        }
-
-        if ($("gradesStars")) {
-            $("gradesStars").textContent =
-                "☆☆☆☆☆";
-        }
-
         return;
-    }
-
-    const average =
-        grades.reduce(
-            (sum, item) =>
-                sum + Number(item.grade),
-            0
-        ) / grades.length;
-
-    if ($("gradesAverage")) {
-        $("gradesAverage").textContent =
-            average.toFixed(2);
-    }
-
-    if ($("gradesStars")) {
-        const rounded =
-            Math.round(average);
-
-        $("gradesStars").textContent =
-            "★".repeat(rounded) +
-            "☆".repeat(
-                5 - rounded
-            );
     }
 
     box.innerHTML =
-        grades
-            .slice()
-            .reverse()
-            .map(grade => `
-                <div class="grade-card">
+        state.grades.map(grade => `
+            <div class="grade-card">
 
-                    <div class="grade-value">
-                        ${escapeHTML(grade.grade)}
-                    </div>
-
-                    <div class="grade-info">
-                        <strong>
-                            ${escapeHTML(grade.subject)}
-                        </strong>
-
-                        <span>
-                            Adta:
-                            ${escapeHTML(
-                                grade.giverName ||
-                                "Ismeretlen"
-                            )}
-                        </span>
-
-                        <small>
-                            ${formatDate(grade.date)}
-                        </small>
-                    </div>
-
-                </div>
-            `)
-            .join("");
-}
-
-
-/* ============================================================
-   STATISZTIKÁK
-============================================================ */
-
-async function loadStats() {
-    try {
-        const data =
-            await api(
-                "/api/stats"
-            );
-
-        if ($("friendCount")) {
-            $("friendCount").textContent =
-                data.friends || 0;
-        }
-
-        if ($("materialCount")) {
-            $("materialCount").textContent =
-                data.materials || 0;
-        }
-
-        if ($("profileFriendCount")) {
-            $("profileFriendCount").textContent =
-                data.friends || 0;
-        }
-
-    } catch (error) {
-        console.error(error);
-    }
-}
-
-
-/* ============================================================
-   PROFIL SZERKESZTŐ HTML
-============================================================ */
-
-function profileEditorHTML() {
-    if ($("profileEditModal")) {
-        return;
-    }
-
-    const modal =
-        document.createElement("div");
-
-    modal.id =
-        "profileEditModal";
-
-    modal.className =
-        "modal-overlay hidden";
-
-    modal.style.display =
-        "none";
-
-    modal.innerHTML = `
-        <div
-            class="modal-card profile-edit-modal-card"
-            style="max-width:600px;"
-        >
-
-            <div class="modal-header">
-
-                <div>
-                    <h2>✏️ Profil szerkesztése</h2>
-                    <p>
-                        Módosítsd a TanulóBarát profilodat.
-                    </p>
+                <div class="grade-value">
+                    ${escapeHTML(
+                        grade.grade
+                    )}
                 </div>
 
-                <button
-                    type="button"
-                    class="modal-close"
-                    data-close-modal="profileEditModal"
-                >
-                    ✕
-                </button>
+                <div class="grade-info">
 
-            </div>
+                    <strong>
+                        ${escapeHTML(
+                            grade.subject
+                        )}
+                    </strong>
 
-            <div class="modal-body">
+                    <span>
+                        Adta:
+                        ${escapeHTML(
+                            grade.giverName
+                        )}
+                    </span>
 
-                <div
-                    id="profileEditMessage"
-                    style="
-                        display:none;
-                        padding:12px;
-                        border-radius:10px;
-                        margin-bottom:15px;
-                    "
-                ></div>
-
-                <div
-                    style="
-                        display:flex;
-                        justify-content:center;
-                        margin-bottom:20px;
-                    "
-                >
-
-                    <div
-                        style="
-                            width:100px;
-                            height:100px;
-                            border-radius:50%;
-                            overflow:hidden;
-                            background:#e5e7eb;
-                            display:flex;
-                            align-items:center;
-                            justify-content:center;
-                        "
-                    >
-                        <img
-                            id="editProfileAvatarPreview"
-                            src=""
-                            alt="Profilkép"
-                            style="
-                                width:100%;
-                                height:100%;
-                                object-fit:cover;
-                                display:none;
-                            "
-                        >
-
-                        <span
-                            id="editProfileAvatarInitial"
-                            style="
-                                font-size:36px;
-                                font-weight:bold;
-                            "
-                        >
-                            👤
-                        </span>
-                    </div>
+                    <small>
+                        ${escapeHTML(
+                            formatDate(
+                                grade.date
+                            )
+                        )}
+                    </small>
 
                 </div>
 
-                <label>
-                    Profilkép
-                </label>
-
-                <input
-                    id="editProfileAvatar"
-                    type="file"
-                    accept="image/*"
-                    style="margin-bottom:8px;"
-                >
-
-                <small
-                    id="editProfileAvatarName"
-                    style="
-                        display:block;
-                        margin-bottom:15px;
-                    "
-                >
-                    Nincs új kép kiválasztva
-                </small>
-
-
-                <label>
-                    Név
-                </label>
-
-                <input
-                    id="editProfileName"
-                    type="text"
-                    autocomplete="name"
-                    placeholder="Teljes név"
-                >
-
-
-                <label>
-                    Felhasználónév
-                </label>
-
-                <input
-                    id="editProfileUsername"
-                    type="text"
-                    autocomplete="username"
-                    placeholder="Felhasználónév"
-                >
-
-
-                <label>
-                    E-mail
-                </label>
-
-                <input
-                    id="editProfileEmail"
-                    type="email"
-                    autocomplete="email"
-                    placeholder="E-mail cím"
-                >
-
-
-                <label>
-                    Évfolyam
-                </label>
-
-                <select
-                    id="editProfileGrade"
-                >
-                    <option value="5">5. osztály</option>
-                    <option value="6">6. osztály</option>
-                    <option value="7">7. osztály</option>
-                    <option value="8">8. osztály</option>
-                    <option value="9">9. osztály</option>
-                    <option value="10">10. osztály</option>
-                    <option value="11">11. osztály</option>
-                    <option value="12">12. osztály</option>
-                </select>
-
-
-                <label>
-                    Új jelszó
-                </label>
-
-                <input
-                    id="editProfilePassword"
-                    type="password"
-                    autocomplete="new-password"
-                    placeholder="Üresen hagyva nem változik"
-                >
-
             </div>
-
-            <div class="modal-footer">
-
-                <button
-                    type="button"
-                    class="secondary-button"
-                    data-close-modal="profileEditModal"
-                >
-                    Mégse
-                </button>
-
-                <button
-                    type="button"
-                    id="saveProfileButton"
-                    class="primary-button"
-                >
-                    💾 Mentés
-                </button>
-
-            </div>
-
-        </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    $("editProfileAvatar")
-        ?.addEventListener(
-            "change",
-            previewProfileImage
-        );
-
-    $("saveProfileButton")
-        ?.addEventListener(
-            "click",
-            saveProfile
-        );
+        `).join("");
 }
 
-
 /* ============================================================
-   PROFIL SZERKESZTÉS GOMB
+   PROFIL SZERKESZTÉS
 ============================================================ */
 
 function ensureProfileEditButton() {
-    profileEditorHTML();
-
-    const page =
-        $("page-profile");
-
-    if (!page) return;
+    if (!$("profilePage") &&
+        !$("page-profile")) {
+        return;
+    }
 
     if ($("editProfileButton")) {
         return;
     }
+
+    const profile =
+        $("page-profile") ||
+        $("profilePage");
+
+    if (!profile) return;
 
     const button =
         document.createElement("button");
@@ -2537,109 +2104,226 @@ function ensureProfileEditButton() {
         openProfileEditor
     );
 
-    const possibleContainers =
-        page.querySelectorAll(
-            ".profile-header, .profile-actions, .page-header, .card-header"
-        );
+    const header =
+        profile.querySelector(
+            ".page-header"
+        ) ||
+        profile.firstElementChild;
 
-    if (possibleContainers.length) {
-        possibleContainers[0]
-            .appendChild(button);
+    if (header) {
+        header.appendChild(
+            button
+        );
     } else {
-        page.prepend(button);
+        profile.prepend(
+            button
+        );
     }
 }
 
+function profileEditorHTML() {
+    if ($("profileEditModal")) {
+        return;
+    }
 
-/* ============================================================
-   PROFIL SZERKESZTŐ MEGNYITÁSA
-============================================================ */
+    const modal =
+        document.createElement("div");
+
+    modal.id =
+        "profileEditModal";
+
+    modal.className =
+        "modal-overlay hidden";
+
+    modal.innerHTML = `
+        <div class="modal-card profile-editor-card">
+
+            <button
+                type="button"
+                class="modal-close"
+                data-close-modal="profileEditModal">
+                ✕
+            </button>
+
+            <h2>
+                ✏️ Profil szerkesztése
+            </h2>
+
+            <div
+                id="profileEditMessage"
+                style="display:none;">
+            </div>
+
+            <div class="profile-edit-avatar">
+
+                <img
+                    id="editProfileAvatarPreview"
+                    alt="Profilkép"
+                    style="
+                        width:100px;
+                        height:100px;
+                        border-radius:50%;
+                        object-fit:cover;
+                    ">
+
+                <label
+                    class="secondary-button"
+                    for="editProfileAvatar">
+                    🖼️ Profilkép választása
+                </label>
+
+                <input
+                    id="editProfileAvatar"
+                    type="file"
+                    accept="image/*"
+                    style="display:none;">
+
+                <small
+                    id="editProfileAvatarName">
+                </small>
+
+            </div>
+
+            <label>
+                Név
+                <input
+                    id="editProfileName"
+                    type="text">
+            </label>
+
+            <label>
+                Felhasználónév
+                <input
+                    id="editProfileUsername"
+                    type="text">
+            </label>
+
+            <label>
+                E-mail
+                <input
+                    id="editProfileEmail"
+                    type="email">
+            </label>
+
+            <label>
+                Évfolyam
+                <select
+                    id="editProfileGrade">
+
+                    <option value="5">5. osztály</option>
+                    <option value="6">6. osztály</option>
+                    <option value="7">7. osztály</option>
+                    <option value="8">8. osztály</option>
+                    <option value="9">9. osztály</option>
+                    <option value="10">10. osztály</option>
+                    <option value="11">11. osztály</option>
+                    <option value="12">12. osztály</option>
+
+                </select>
+            </label>
+
+            <label>
+                Új jelszó
+                <input
+                    id="editProfilePassword"
+                    type="password"
+                    placeholder="Üresen hagyva nem változik">
+            </label>
+
+            <div class="modal-actions">
+
+                <button
+                    type="button"
+                    class="secondary-button"
+                    data-close-modal="profileEditModal">
+                    Mégse
+                </button>
+
+                <button
+                    type="button"
+                    id="saveProfileButton"
+                    class="primary-button">
+                    💾 Mentés
+                </button>
+
+            </div>
+
+        </div>
+    `;
+
+    document.body.appendChild(
+        modal
+    );
+
+    $("editProfileAvatar")
+        ?.addEventListener(
+            "change",
+            previewProfileImage
+        );
+
+    $("saveProfileButton")
+        ?.addEventListener(
+            "click",
+            saveProfile
+        );
+}
 
 function openProfileEditor() {
     if (!state.user) return;
 
     profileEditorHTML();
 
-    clearProfileMessage();
+    if ($("editProfileName")) {
+        $("editProfileName").value =
+            state.user.name || "";
+    }
 
-    $("editProfileName").value =
-        state.user.name || "";
+    if ($("editProfileUsername")) {
+        $("editProfileUsername").value =
+            state.user.username || "";
+    }
 
-    $("editProfileUsername").value =
-        state.user.username || "";
+    if ($("editProfileEmail")) {
+        $("editProfileEmail").value =
+            state.user.email || "";
+    }
 
-    $("editProfileEmail").value =
-        state.user.email || "";
+    if ($("editProfileGrade")) {
+        $("editProfileGrade").value =
+            state.user.grade || 5;
+    }
 
-    $("editProfileGrade").value =
-        state.user.grade || 5;
-
-    $("editProfilePassword").value =
-        "";
+    if ($("editProfilePassword")) {
+        $("editProfilePassword").value =
+            "";
+    }
 
     window.__tbSelectedAvatar =
         null;
 
-    const preview =
-        $("editProfileAvatarPreview");
-
-    const initial =
-        $("editProfileAvatarInitial");
-
-    if (state.user.avatar) {
-        if (preview) {
-            preview.src =
+    if ($("editProfileAvatarPreview")) {
+        if (state.user.avatar) {
+            $("editProfileAvatarPreview")
+                .src =
                 state.user.avatar;
-
-            preview.style.display =
-                "block";
-        }
-
-        if (initial) {
-            initial.style.display =
-                "none";
-        }
-    } else {
-        if (preview) {
-            preview.src = "";
-            preview.style.display =
-                "none";
-        }
-
-        if (initial) {
-            initial.style.display =
-                "block";
-
-            initial.textContent =
-                (
-                    state.user.name ||
-                    state.user.username ||
-                    "?"
-                )
-                    .charAt(0)
-                    .toUpperCase();
+        } else {
+            $("editProfileAvatarPreview")
+                .removeAttribute("src");
         }
     }
 
-    if ($("editProfileAvatarName")) {
-        $("editProfileAvatarName").textContent =
-            "Nincs új kép kiválasztva";
-    }
-
-    if ($("editProfileAvatar")) {
-        $("editProfileAvatar").value =
-            "";
-    }
+    clearProfileMessage();
 
     openModal(
         "profileEditModal"
     );
 }
 
-
-/* ============================================================
-   PROFIL ÜZENET
-============================================================ */
+function closeProfileEditor() {
+    closeModal(
+        "profileEditModal"
+    );
+}
 
 function showProfileMessage(
     text,
@@ -2656,15 +2340,25 @@ function showProfileMessage(
     box.style.display =
         "block";
 
-    box.style.background =
-        type === "success"
-            ? "#dcfce7"
-            : "#fee2e2";
+    box.style.padding =
+        "10px";
 
-    box.style.color =
-        type === "success"
-            ? "#166534"
-            : "#991b1b";
+    box.style.borderRadius =
+        "8px";
+
+    if (type === "success") {
+        box.style.background =
+            "#dcfce7";
+
+        box.style.color =
+            "#166534";
+    } else {
+        box.style.background =
+            "#fee2e2";
+
+        box.style.color =
+            "#991b1b";
+    }
 }
 
 function clearProfileMessage() {
@@ -2673,16 +2367,12 @@ function clearProfileMessage() {
 
     if (!box) return;
 
-    box.textContent = "";
+    box.textContent =
+        "";
 
     box.style.display =
         "none";
 }
-
-
-/* ============================================================
-   KÉP ÁTMÉRETEZÉSE
-============================================================ */
 
 function resizeImage(file) {
     return new Promise(
@@ -2693,73 +2383,76 @@ function resizeImage(file) {
             reader.onerror =
                 reject;
 
-            reader.onload = () => {
-                const img =
-                    new Image();
+            reader.onload =
+                () => {
+                    const img =
+                        new Image();
 
-                img.onerror =
-                    reject;
+                    img.onerror =
+                        reject;
 
-                img.onload = () => {
-                    const max = 512;
+                    img.onload =
+                        () => {
+                            const max =
+                                512;
 
-                    const scale =
-                        Math.min(
-                            1,
-                            max /
+                            const scale =
+                                Math.min(
+                                    1,
+                                    max /
+                                    Math.max(
+                                        img.width,
+                                        img.height
+                                    )
+                                );
+
+                            const canvas =
+                                document.createElement(
+                                    "canvas"
+                                );
+
+                            canvas.width =
                                 Math.max(
-                                    img.width,
-                                    img.height
+                                    1,
+                                    Math.round(
+                                        img.width *
+                                        scale
+                                    )
+                                );
+
+                            canvas.height =
+                                Math.max(
+                                    1,
+                                    Math.round(
+                                        img.height *
+                                        scale
+                                    )
+                                );
+
+                            const ctx =
+                                canvas.getContext(
+                                    "2d"
+                                );
+
+                            ctx.drawImage(
+                                img,
+                                0,
+                                0,
+                                canvas.width,
+                                canvas.height
+                            );
+
+                            resolve(
+                                canvas.toDataURL(
+                                    "image/jpeg",
+                                    0.82
                                 )
-                        );
+                            );
+                        };
 
-                    const canvas =
-                        document.createElement(
-                            "canvas"
-                        );
-
-                    canvas.width =
-                        Math.max(
-                            1,
-                            Math.round(
-                                img.width *
-                                    scale
-                            )
-                        );
-
-                    canvas.height =
-                        Math.max(
-                            1,
-                            Math.round(
-                                img.height *
-                                    scale
-                            )
-                        );
-
-                    const context =
-                        canvas.getContext(
-                            "2d"
-                        );
-
-                    context.drawImage(
-                        img,
-                        0,
-                        0,
-                        canvas.width,
-                        canvas.height
-                    );
-
-                    resolve(
-                        canvas.toDataURL(
-                            "image/jpeg",
-                            0.82
-                        )
-                    );
+                    img.src =
+                        reader.result;
                 };
-
-                img.src =
-                    reader.result;
-            };
 
             reader.readAsDataURL(
                 file
@@ -2767,11 +2460,6 @@ function resizeImage(file) {
         }
     );
 }
-
-
-/* ============================================================
-   PROFILKÉP ELŐNÉZET
-============================================================ */
 
 async function previewProfileImage(event) {
     const file =
@@ -2802,32 +2490,18 @@ async function previewProfileImage(event) {
         window.__tbSelectedAvatar =
             data;
 
-        const preview =
-            $("editProfileAvatarPreview");
-
-        if (preview) {
-            preview.src =
-                data;
-
-            preview.style.display =
-                "block";
-        }
-
-        const initial =
-            $("editProfileAvatarInitial");
-
-        if (initial) {
-            initial.style.display =
-                "none";
+        if ($("editProfileAvatarPreview")) {
+            $("editProfileAvatarPreview")
+                .src = data;
         }
 
         if ($("editProfileAvatarName")) {
-            $("editProfileAvatarName").textContent =
+            $("editProfileAvatarName")
+                .textContent =
                 file.name;
         }
 
         clearProfileMessage();
-
     } catch (error) {
         console.error(error);
 
@@ -2836,11 +2510,6 @@ async function previewProfileImage(event) {
         );
     }
 }
-
-
-/* ============================================================
-   PROFIL MENTÉSE
-============================================================ */
 
 async function saveProfile() {
     const name =
@@ -2932,7 +2601,9 @@ async function saveProfile() {
                 {
                     method: "PUT",
                     body:
-                        JSON.stringify(body)
+                        JSON.stringify(
+                            body
+                        )
                 }
             );
 
@@ -2950,29 +2621,26 @@ async function saveProfile() {
             null;
 
         setTimeout(
-            () => {
-                closeModal(
-                    "profileEditModal"
-                );
-            },
+            closeProfileEditor,
             700
         );
-
     } catch (error) {
+        console.error(error);
+
         showProfileMessage(
             error.message ||
             "Nem sikerült menteni a profilt."
         );
-
     } finally {
         if (button) {
-            button.disabled = false;
+            button.disabled =
+                false;
+
             button.textContent =
                 "💾 Mentés";
         }
     }
 }
-
 
 /* ============================================================
    ÖSSZES ADAT BETÖLTÉSE
@@ -2988,17 +2656,13 @@ async function loadAll() {
         loadFriends(),
         loadRequests(),
         loadGrades(),
-        loadMaterials(),
-        loadStats()
+        loadMaterials()
     ]);
 
     updateUserUI();
 
-    setLoading(
-        false
-    );
+    setLoading(false);
 }
-
 
 /* ============================================================
    ESEMÉNYEK
@@ -3017,8 +2681,7 @@ function setupEvents() {
             }
         );
 
-
-    /* REGISZTRÁCIÓ */
+    /* REGISTER */
 
     $("registerForm")
         ?.addEventListener(
@@ -3029,7 +2692,6 @@ function setupEvents() {
             }
         );
 
-
     /* LOGOUT */
 
     $("logoutButton")
@@ -3038,8 +2700,7 @@ function setupEvents() {
             logout
         );
 
-
-    /* LOGIN TAB */
+    /* AUTH TABS */
 
     $("loginTab")
         ?.addEventListener(
@@ -3062,19 +2723,17 @@ function setupEvents() {
                     .add("hidden");
 
                 if ($("loginForm")) {
-                    $("loginForm").style.display =
-                        "";
+                    $("loginForm")
+                        .style.display = "";
                 }
 
                 if ($("registerForm")) {
-                    $("registerForm").style.display =
+                    $("registerForm")
+                        .style.display =
                         "none";
                 }
             }
         );
-
-
-    /* REGISTER TAB */
 
     $("registerTab")
         ?.addEventListener(
@@ -3097,19 +2756,19 @@ function setupEvents() {
                     .add("hidden");
 
                 if ($("registerForm")) {
-                    $("registerForm").style.display =
-                        "";
+                    $("registerForm")
+                        .style.display = "";
                 }
 
                 if ($("loginForm")) {
-                    $("loginForm").style.display =
+                    $("loginForm")
+                        .style.display =
                         "none";
                 }
             }
         );
 
-
-    /* PASSWORD MEGJELENÍTÉS */
+    /* PASSWORD SHOW/HIDE */
 
     document
         .querySelectorAll(
@@ -3136,8 +2795,7 @@ function setupEvents() {
             );
         });
 
-
-    /* FELHASZNÁLÓ KERESÉS */
+    /* USER SEARCH */
 
     $("searchUsersButton")
         ?.addEventListener(
@@ -3159,8 +2817,7 @@ function setupEvents() {
             }
         );
 
-
-    /* TANANYAG KERESÉS */
+    /* MATERIAL SEARCH */
 
     $("materialSearch")
         ?.addEventListener(
@@ -3174,15 +2831,15 @@ function setupEvents() {
             renderMaterials
         );
 
-
-    /* CHAT ENTER */
+    /* CHAT */
 
     $("chatInput")
         ?.addEventListener(
             "keydown",
             event => {
                 if (
-                    event.key === "Enter" &&
+                    event.key ===
+                        "Enter" &&
                     !event.shiftKey
                 ) {
                     event.preventDefault();
@@ -3191,23 +2848,20 @@ function setupEvents() {
             }
         );
 
-
-    /* CHAT KÜLDÉS */
-
     $("sendChatButton")
         ?.addEventListener(
             "click",
             sendMessage
         );
 
-
-    /* AI GOMBOK */
+    /* AI BUTTONS */
 
     [
         "homeAIButton",
         "learningAIButton",
         "emptyLearningAIButton",
-        "bottomAIButton"
+        "bottomAIButton",
+        "chatAIButton"
     ].forEach(id => {
         $(id)?.addEventListener(
             "click",
@@ -3215,33 +2869,17 @@ function setupEvents() {
         );
     });
 
-
-    $("chatAIButton")
-        ?.addEventListener(
-            "click",
-            openAIModal
-        );
-
-
-    /* AI GENERÁLÁS */
-
     $("generateAIButton")
         ?.addEventListener(
             "click",
             generateAI
         );
 
-
-    /* AI ELKÜLDÉS */
-
     $("approveSendButton")
         ?.addEventListener(
             "click",
             approveAndSendAI
         );
-
-
-    /* PREVIEW MÉGSE */
 
     $("cancelPreviewButton")
         ?.addEventListener(
@@ -3253,11 +2891,13 @@ function setupEvents() {
 
                 state.generatedAI =
                     null;
+
+                state.selectedSendFriendId =
+                    null;
             }
         );
 
-
-    /* AI TÍPUS */
+    /* AI TYPE */
 
     document
         .querySelectorAll(
@@ -3276,16 +2916,18 @@ function setupEvents() {
                         .querySelectorAll(
                             "[data-ai-type]"
                         )
-                        .forEach(b => {
-                            b.classList.toggle(
-                                "active",
-                                b === button
-                            );
-                        });
+                        .forEach(
+                            b => {
+                                b.classList.toggle(
+                                    "active",
+                                    b ===
+                                    button
+                                );
+                            }
+                        );
                 }
             );
         });
-
 
     /* RATING */
 
@@ -3304,7 +2946,6 @@ function setupEvents() {
             submitRating
         );
 
-
     document
         .querySelectorAll(
             "#ratingStars button"
@@ -3315,7 +2956,8 @@ function setupEvents() {
                 () => {
                     state.ratingValue =
                         Number(
-                            button.dataset.rating
+                            button.dataset
+                                .rating
                         );
 
                     updateRatingStars();
@@ -3323,8 +2965,7 @@ function setupEvents() {
             );
         });
 
-
-    /* JEGY */
+    /* GRADE */
 
     $("cancelGradeButton")
         ?.addEventListener(
@@ -3341,7 +2982,6 @@ function setupEvents() {
             submitGrade
         );
 
-
     document
         .querySelectorAll(
             "#gradeOptions button"
@@ -3352,43 +2992,50 @@ function setupEvents() {
                 () => {
                     state.gradeValue =
                         Number(
-                            button.dataset.grade
+                            button.dataset
+                                .grade
                         );
 
                     document
                         .querySelectorAll(
                             "#gradeOptions button"
                         )
-                        .forEach(b => {
-                            b.classList.toggle(
-                                "selected",
-                                b === button
-                            );
-                        });
+                        .forEach(
+                            b => {
+                                b.classList.toggle(
+                                    "selected",
+                                    b ===
+                                    button
+                                );
+                            }
+                        );
 
                     if ($("selectedGrade")) {
-                        $("selectedGrade").textContent =
+                        $("selectedGrade")
+                            .textContent =
                             `${state.gradeValue} / 5`;
                     }
 
-                    if ($("submitGradeButton")) {
-                        $("submitGradeButton").disabled =
+                    if (
+                        $("submitGradeButton")
+                    ) {
+                        $("submitGradeButton")
+                            .disabled =
                             false;
                     }
                 }
             );
         });
 
-
     /* ========================================================
-       EGYETLEN GLOBÁLIS CLICK KEZELŐ
+       DINAMIKUS GOMBOK
     ======================================================== */
 
     document.addEventListener(
         "click",
         event => {
 
-            /* NAVIGÁCIÓ */
+            /* NAVIGATION */
 
             const nav =
                 event.target.closest(
@@ -3405,7 +3052,6 @@ function setupEvents() {
                 return;
             }
 
-
             /* CHAT */
 
             const chat =
@@ -3416,13 +3062,13 @@ function setupEvents() {
             if (chat) {
                 return openChat(
                     Number(
-                        chat.dataset.chatId
+                        chat.dataset
+                            .chatId
                     )
                 );
             }
 
-
-            /* ÉRTÉKELÉS */
+            /* RATING */
 
             const rate =
                 event.target.closest(
@@ -3435,7 +3081,8 @@ function setupEvents() {
                         f =>
                             Number(f.id) ===
                             Number(
-                                rate.dataset.rateId
+                                rate.dataset
+                                    .rateId
                             )
                     );
 
@@ -3449,8 +3096,7 @@ function setupEvents() {
                 return;
             }
 
-
-            /* JEGY */
+            /* GRADE */
 
             const grade =
                 event.target.closest(
@@ -3463,7 +3109,8 @@ function setupEvents() {
                         f =>
                             Number(f.id) ===
                             Number(
-                                grade.dataset.gradeId
+                                grade.dataset
+                                    .gradeId
                             )
                     );
 
@@ -3477,8 +3124,7 @@ function setupEvents() {
                 return;
             }
 
-
-            /* ELFOGADÁS */
+            /* ACCEPT */
 
             const accept =
                 event.target.closest(
@@ -3494,8 +3140,7 @@ function setupEvents() {
                 );
             }
 
-
-            /* ELUTASÍTÁS */
+            /* REJECT */
 
             const reject =
                 event.target.closest(
@@ -3511,8 +3156,7 @@ function setupEvents() {
                 );
             }
 
-
-            /* BARÁTI KÉRÉS */
+            /* REQUEST */
 
             const request =
                 event.target.closest(
@@ -3528,15 +3172,19 @@ function setupEvents() {
                 );
             }
 
-
-            /* TANANYAG */
+            /* MATERIAL */
 
             const material =
                 event.target.closest(
                     "[data-material-id]"
                 );
 
-            if (material) {
+            if (
+                material &&
+                !event.target.closest(
+                    "[data-send-friend-id]"
+                )
+            ) {
                 return openMaterial(
                     Number(
                         material.dataset
@@ -3545,8 +3193,7 @@ function setupEvents() {
                 );
             }
 
-
-            /* TANANYAG KÜLDÉSE */
+            /* SEND FRIEND */
 
             const sendFriend =
                 event.target.closest(
@@ -3554,14 +3201,16 @@ function setupEvents() {
                 );
 
             if (sendFriend) {
-                return sendGeneratedMaterial(
+                state.selectedSendFriendId =
                     Number(
                         sendFriend.dataset
                             .sendFriendId
-                    )
-                );
-            }
+                    );
 
+                renderSendFriendList();
+
+                return;
+            }
 
             /* AI */
 
@@ -3574,8 +3223,7 @@ function setupEvents() {
                 return openAIModal();
             }
 
-
-            /* MODAL BEZÁRÁS */
+            /* CLOSE NORMAL MODAL */
 
             const close =
                 event.target.closest(
@@ -3589,52 +3237,60 @@ function setupEvents() {
                 );
             }
 
+            /* MATERIAL VIEWER */
 
-            /* MODAL HÁTTÉR */
+            const closeMaterial =
+                event.target.closest(
+                    "[data-close-material-viewer]"
+                );
 
-            const modal =
+            if (closeMaterial) {
+                return closeModal(
+                    "materialViewerModal"
+                );
+            }
+
+            /* MODAL BACKGROUND */
+
+            if (
                 event.target.classList
                     .contains(
                         "modal-overlay"
                     )
-                    ? event.target
-                    : null;
-
-            if (modal) {
+            ) {
                 closeModal(
-                    modal.id
+                    event.target.id
                 );
             }
         }
     );
 
-
-    /* MOBIL MENÜ */
+    /* MOBILE MENU */
 
     $("mobileMenuButton")
         ?.addEventListener(
             "click",
-            () =>
+            () => {
                 $("sidebar")
                     ?.classList
-                    .toggle("open")
+                    .toggle("open");
+            }
         );
 
-
-    /* TÉMA */
+    /* THEME */
 
     $("themeToggle")
         ?.addEventListener(
             "click",
             () => {
-                document.body.classList.toggle(
-                    "light-theme"
-                );
+                document.body.classList
+                    .toggle(
+                        "light-theme"
+                    );
             }
         );
 
-
-    /* ÉRTESÍTÉSEK */
+    /* NOTIFICATIONS */
 
     $("notificationButton")
         ?.addEventListener(
@@ -3653,8 +3309,7 @@ function setupEvents() {
             }
         );
 
-
-    /* ESC MODAL */
+    /* ESCAPE */
 
     document.addEventListener(
         "keydown",
@@ -3667,16 +3322,16 @@ function setupEvents() {
                     .querySelectorAll(
                         ".modal-overlay.active"
                     )
-                    .forEach(modal => {
-                        closeModal(
-                            modal.id
-                        );
-                    });
+                    .forEach(
+                        modal =>
+                            closeModal(
+                                modal.id
+                            )
+                    );
             }
         }
     );
 }
-
 
 /* ============================================================
    CHAT AUTOMATIKUS FRISSÍTÉS
@@ -3696,7 +3351,6 @@ setInterval(
     },
     3000
 );
-
 
 /* ============================================================
    GLOBÁLIS FÜGGVÉNYEK
@@ -3739,18 +3393,6 @@ Object.assign(
     }
 );
 
-
-/* ============================================================
-   PROFIL SZERKESZTŐ BEZÁRÁSA
-============================================================ */
-
-function closeProfileEditor() {
-    closeModal(
-        "profileEditModal"
-    );
-}
-
-
 /* ============================================================
    INDÍTÁS
 ============================================================ */
@@ -3758,7 +3400,6 @@ function closeProfileEditor() {
 document.addEventListener(
     "DOMContentLoaded",
     async () => {
-
         console.log(
             "🚀 TanulóBarát betöltve"
         );
