@@ -1145,10 +1145,6 @@ app.post(
 // TANULÓBARÁT AI – VALÓDI AI TANANYAG / HÁZI / TESZT
 // ============================================================
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
-});
-
 
 // ============================================================
 // AI JSON TISZTÍTÁSA
