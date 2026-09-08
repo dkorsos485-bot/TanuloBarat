@@ -1416,174 +1416,44 @@ async function sendMessage() {
 
 
 /* ============================================================
-   AI TANANYAG
-   ============================================================ */
+AI TANANYAG – JELENLEG NEM ÜZEMEL
+============================================================ */
 
 function openAIModal() {
-    state.generatedAI = null;
-    state.aiType = "material";
+showToast(
+"⚠️ AI jelenleg nem üzemel. Kérjük, próbáld meg később újra.",
+"error"
+);
 
-    if ($("aiSubject")) {
-        $("aiSubject").value = "";
-    }
+```
+return;
+```
 
-    if ($("aiTopic")) {
-        $("aiTopic").value = "";
-    }
-
-    if ($("aiStatus")) {
-        $("aiStatus").textContent = "";
-    }
-
-    document
-        .querySelectorAll("[data-ai-type]")
-        .forEach(button => {
-            button.classList.toggle(
-                "active",
-                button.dataset.aiType === "material"
-            );
-        });
-
-    openModal("aiModal");
 }
-
 
 async function generateAI() {
-    const subject =
-        $("aiSubject")?.value.trim();
+showToast(
+"⚠️ AI jelenleg nem üzemel. Kérjük, próbáld meg később újra.",
+"error"
+);
 
-    const topic =
-        $("aiTopic")?.value.trim();
+```
+return;
+```
 
-    if (!subject || !topic) {
-        showToast(
-            "Add meg a tantárgyat és a témát!",
-            "error"
-        );
-        return;
-    }
-
-    try {
-        if ($("aiStatus")) {
-            $("aiStatus").textContent =
-                "✨ Tananyag készítése...";
-        }
-
-        const data =
-            await api(
-                "/api/ai/generate",
-                {
-                    method: "POST",
-                    body: JSON.stringify({
-                        subject,
-                        topic,
-                        type: state.aiType
-                    })
-                }
-            );
-
-        state.generatedAI =
-            data;
-
-        closeModal("aiModal");
-
-        showAIPreview(data);
-
-    } catch (error) {
-        console.error(
-            "AI hiba:",
-            error
-        );
-
-        if ($("aiStatus")) {
-            $("aiStatus").textContent =
-                error.message;
-        }
-
-        showToast(
-            error.message,
-            "error"
-        );
-    }
 }
-
 
 function showAIPreview(data) {
-    if (!data) {
-        return;
-    }
+showToast(
+"⚠️ AI jelenleg nem üzemel. Kérjük, próbáld meg később újra.",
+"error"
+);
 
-    if ($("previewTitle")) {
-        $("previewTitle").textContent =
-            data.title ||
-            "AI tananyag";
-    }
+```
+return;
+```
 
-    if ($("previewContent")) {
-        let html = "";
-
-        if (data.explanation) {
-            html += `
-                <h3>📖 Magyarázat</h3>
-                <p>
-                    ${escapeHTML(
-                        data.explanation
-                    )}
-                </p>
-            `;
-        }
-
-        if (Array.isArray(data.important)) {
-            html += `
-                <h3>⭐ Fontos fogalmak</h3>
-                <ul>
-                    ${
-                        data.important
-                            .map(
-                                item =>
-                                    `<li>${escapeHTML(item)}</li>`
-                            )
-                            .join("")
-                    }
-                </ul>
-            `;
-        }
-
-        if (data.examples) {
-            html += `
-                <h3>💡 Példák</h3>
-                <p>
-                    ${escapeHTML(
-                        data.examples
-                    ).replaceAll(
-                        "\n",
-                        "<br>"
-                    )}
-                </p>
-            `;
-        }
-
-        if (data.summary) {
-            html += `
-                <h3>📝 Összefoglaló</h3>
-                <p>
-                    ${escapeHTML(
-                        data.summary
-                    )}
-                </p>
-            `;
-        }
-
-        $("previewContent").innerHTML =
-            html ||
-            "<p>Nincs megjeleníthető tartalom.</p>";
-    }
-
-    openModal(
-        "previewModal"
-    );
 }
-
 
 /* ============================================================
    TANANYAG KÜLDÉSE
